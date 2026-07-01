@@ -2198,14 +2198,17 @@ function renderAttModal(){
 }
 function attSetTarget(t){ if(!bCoachPass){ toast('対象の変更はコーチのみ'); return; } attCurRec.target=t; attendance[attCurGame]=attCurRec; persistAttendance(); renderAttModal(); }
 async function attMark(pid,st){
-  attCurRec.marks[pid]=st; renderAttModal();
+  const next = attCurRec.marks[pid]===st ? '' : st;
+  if(next==='') delete attCurRec.marks[pid]; else attCurRec.marks[pid]=next;
+  renderAttModal();
   try{
     const s=await tDataGet('attendance'); const latest=s?JSON.parse(s):{};
     const rec=latest[attCurGame]||{target:attCurRec.target,marks:{}}; if(!rec.marks)rec.marks={};
-    rec.marks[pid]=st; rec.target=attCurRec.target||rec.target||'A';
+    if(next==='') delete rec.marks[pid]; else rec.marks[pid]=next;
+    rec.target=attCurRec.target||rec.target||'A';
     latest[attCurGame]=rec; tDataSave('attendance', JSON.stringify(latest));
     attendance=latest; attCurRec=rec;
-  }catch(e){ attendance[attCurGame]=attCurRec; tDataSave('attendance', JSON.stringify(attendance)); }
+  }catch(e){ if(next==='') delete attendance[attCurGame]?.marks?.[pid]; attendance[attCurGame]=attCurRec; tDataSave('attendance', JSON.stringify(attendance)); }
 }
 
 /* ---- スコア（独立タブ・日程と無関係に残る／背番号表示） ---- */
