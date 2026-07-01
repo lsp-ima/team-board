@@ -283,6 +283,8 @@ function formatSchedTime(val) {
   <button class="active" onclick="setMainTab('board')">🏀 作戦盤</button>
   <button onclick="setMainTab('video')">🎬 動画</button>
   <button onclick="setMainTab('bbs')">🔒 チーム</button>
+  <button onclick="setMainTab('score')">🏀 スコア</button>
+  <button id="navRoster" style="display:none" onclick="setMainTab('roster')">👥 メンバー</button>
 </nav>
 
 <div class="main-pane active" id="pane-board">
@@ -495,6 +497,18 @@ function formatSchedTime(val) {
       </div>
     </div>
   </div>
+</div>
+
+<div class="main-pane" id="pane-score">
+  <div class="board-topbar"><h2>スコア</h2></div>
+  <div class="b-hint">試合ごとの得点記録（日程を消しても残ります）。記録はコーチが入力します。</div>
+  <div id="scoreArea"><div class="b-empty">読み込み中…</div></div>
+</div>
+
+<div class="main-pane" id="pane-roster">
+  <div class="board-topbar"><h2>メンバー</h2></div>
+  <div class="b-hint">チーム分け・背番号を設定できます（コーチ専用）。チーム名は「✎ チーム名を編集」から自由に変更できます（例：男子／女子）。</div>
+  <div id="rosterArea"><div class="b-empty">読み込み中…</div></div>
 </div>
 
 <div class="vl-overlay" id="vlOverlay"><div class="vl-modal" id="vlModal"></div></div>
@@ -1082,19 +1096,13 @@ function resetPositions(){ defaultPositions(); clearPaths(); }
 
 let lastRecording=null;
 let myPlays=[];
-let storageOK=true;
-const MYKEY='baske_myplays_v1';
 
-function loadMyPlays(){
-  try{ const s=localStorage.getItem(MYKEY); myPlays = s?JSON.parse(s):[]; }
-  catch(e){ myPlays=[]; storageOK=false; }
+async function loadMyPlays(){
+  try{ const s=await tDataGet('plays'); myPlays = s?JSON.parse(s):[]; if(!Array.isArray(myPlays)) myPlays=[]; }
+  catch(e){ myPlays=[]; }
 }
 function persistMyPlays(){
-  try{ localStorage.setItem(MYKEY, JSON.stringify(myPlays)); }
-  catch(e){
-    if(storageOK){ storageOK=false;
-      alert('この環境では自動保存ができないようです。\n「⬇ バックアップを書き出す」でファイルとして保存してください。'); }
-  }
+  tDataSave('plays', JSON.stringify(myPlays));
 }
 
 function renderMyPlays(){
@@ -1192,7 +1200,7 @@ function importPlays(ev){
    動画ライブラリの復元部分
 ======================================================== */
 const VLIBKEY='baske_vlib_v1';
-let vlib=null, vidTab='all', vidPlayerIdx=0, vlibStorageOK=true;
+let vlib=null, vidTab='all', vidPlayerIdx=0;
 
 const VLIB_SEED = {
   all: {
@@ -1202,16 +1210,14 @@ const VLIB_SEED = {
   players: []
 };
 
-function loadVlib(){
-  try{ const s=localStorage.getItem(VLIBKEY); vlib = s?JSON.parse(s):vclone(VLIB_SEED); }
-  catch(e){ vlib=vclone(VLIB_SEED); vlibStorageOK=false; }
+async function loadVlib(){
+  try{ const s=await tDataGet('vlib'); vlib = s?JSON.parse(s):vclone(VLIB_SEED); }
+  catch(e){ vlib=vclone(VLIB_SEED); }
   if(!vlib.all||!Array.isArray(vlib.players)) vlib=vclone(VLIB_SEED);
 }
 
 function persistVlib(){
-  try{ localStorage.setItem(VLIBKEY, JSON.stringify(vlib)); }
-  catch(e){ if(vlibStorageOK){ vlibStorageOK=false;
-    alert('この環境では自動保存ができません。\n「⬇ バックアップ」でファイルに保存してください。'); } }
+  tDataSave('vlib', JSON.stringify(vlib));
 }
 
 function getVideos(loc){
@@ -1423,11 +1429,15 @@ function resetVlib(){
 /* ===== メインタブ ===== */
 function setMainTab(t){
   document.querySelectorAll('.main-tabs button').forEach((b,i)=>{
-    b.classList.toggle('active',['board','video','bbs'][i]===t);
+    b.classList.toggle('active',['board','video','bbs','score','roster'][i]===t);
   });
   document.querySelectorAll('.main-pane').forEach(p=>p.classList.remove('active'));
   document.getElementById('pane-'+t).classList.add('active');
 
+  if(t==='board'){ loadMyPlays().then(renderMyPlays); loadPlayerPlays().then(renderPlayerPlays); }
+  if(t==='video'){ loadVlib().then(renderVlib); }
+  if(t==='roster'){ Promise.all([loadRoster(),loadTeamLabels()]).then(renderRoster); }
+  if(t==='score'){ Promise.all([loadScores(),loadTeamLabels()]).then(renderScoreList); }
   if(t==='bbs') {
     document.getElementById('bUnlockedContent').style.display = 'none';
     document.getElementById('bLockScreen').style.display = 'none';
@@ -1644,13 +1654,12 @@ function clearPathsPlayer(){
   playerRouteActions=[];playerPaths=[...offense,...defense].map(()=>[]);playerBallPath=[];
   draw();
 }
-function loadPlayerPlays(){
-  try{const s=localStorage.getItem(PLAYER_PLAYS_KEY);playerPlays=s?JSON.parse(s):[];}
-  catch(e){playerPlays=[];}
+async function loadPlayerPlays(){
+  try{ const s=await tDataGet('pplays'); playerPlays=s?JSON.parse(s):[]; if(!Array.isArray(playerPlays)) playerPlays=[]; }
+  catch(e){ playerPlays=[]; }
 }
 function persistPlayerPlays(){
-  try{localStorage.setItem(PLAYER_PLAYS_KEY,JSON.stringify(playerPlays));}
-  catch(e){}
+  tDataSave('pplays', JSON.stringify(playerPlays));
 }
 function savePlayerPlay(){
   const name=(document.getElementById('playNameP').value||'').trim();
@@ -1719,6 +1728,19 @@ function loadPlayerPlay(idx,btn){
 function safeLSget(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
 function safeLSset(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
 let bTab='list',bVisMode='public',bCoachPass=null,bBoardPass=safeLSget('baske_board_pass')||null;
+let boardGateActive=false;
+function bBoardGate(){
+  boardGateActive=true;
+  showModal('<h3>チームの合言葉</h3><p class="b-hint" style="margin-bottom:14px">はじめに、あなたのチーム共通の合言葉を入力してください。予定・作戦盤・動画・名簿などをチームで共有するために使います。</p><div class="vl-field"><label>チームの合言葉（例：tokyo）</label><input type="text" id="bBpass"></div><div class="vl-mbtns"><button class="ok" onclick="bBoardGateSubmit()">入る</button></div>');
+  setTimeout(()=>{const el=document.getElementById('bBpass');if(el)el.focus();},50);
+}
+function bBoardGateSubmit(){
+  const v=(document.getElementById('bBpass').value||'').trim().toLowerCase();
+  if(!v){toast('合言葉を入力してください');return;}
+  bBoardPass=v; bCoachPass=null; safeLSset('baske_board_pass',bBoardPass);
+  boardGateActive=false; closeModal(); bUpdateCoachUI();
+  loadMyPlays().then(renderMyPlays); loadPlayerPlays().then(renderPlayerPlays); loadVlib().then(renderVlib);
+}
 
 function bConfigured(){ return !!(typeof sb!=='undefined' && sb); }
 
@@ -1748,6 +1770,20 @@ async function teamRecover(team, code, newPass){
   if(!t || !t.recovery_code || t.recovery_code !== code) return false;
   const { error } = await sb.from('teams').update({ coach_pass:newPass }).eq('team_id', team);
   return !error;
+}
+
+/* ===== team_data：作戦盤・動画・名簿・出欠・スコアをteam_idごとに共有保存 ===== */
+async function tDataGet(key){
+  if(!bBoardPass || !bConfigured()) return '';
+  try{
+    const { data } = await sb.from('team_data').select('value').eq('team_id', bBoardPass).eq('key', key).maybeSingle();
+    return (data && data.value) || '';
+  }catch(e){ return ''; }
+}
+function tDataSave(key, value){
+  if(!bBoardPass || !bConfigured()) return;
+  try{ sb.from('team_data').upsert({ team_id:bBoardPass, key, value, updated_at:new Date().toISOString() }).then(()=>{}); }
+  catch(e){}
 }
 
 /* ===== bApi：GASのかわりにSupabaseで同じ形のレスポンスを返す ===== */
@@ -1854,7 +1890,7 @@ async function sRenderList() {
     const isTourney = s.type === 'tourney';
     const tagLabel = isTourney ? '🏆 大会' : '🏀 練習試合';
     const tagClass = isTourney ? 'tourney' : 'match';
-    const coachAction = bCoachPass ? `<div class="b-cact" style="margin-top:12px; padding-top:12px; border-top:1px solid #2a313a"><button onclick="sOpenForm('${s.id}')">編集</button><button class="del" onclick="sDel('${s.id}')">削除</button></div>` : '';
+    const coachAction = `<div class="b-cact" style="margin-top:12px; padding-top:12px; border-top:1px solid #2a313a; flex-wrap:wrap"><button onclick="openAtt('${s.id}')">📋 出欠</button>${bCoachPass?`<button onclick="sOpenForm('${s.id}')">編集</button><button class="del" onclick="sDel('${s.id}')">削除</button>`:''}</div>`;
     html += `<div class="b-card"><div class="s-tag ${tagClass}">${tagLabel}</div><div class="s-date">${esc(formatSchedDate(s.date))}</div><div class="s-detail"><span class="sl">対戦相手：</span><span class="sv">${esc(s.opponent)}</span></div><div class="s-detail"><span class="sl">会 場：</span><span class="sv">${esc(s.venue)}</span></div><div class="s-detail"><span class="sl">集合時間：</span><span class="sv">${esc(formatSchedTime(s.meet))}</span></div><div class="s-detail"><span class="sl">終了予定：</span><span class="sv">${esc(formatSchedTime(s.end))}</span></div>${s.route ? `<div class="s-route"><div class="s-route-title">🚃 経路・乗り換え</div>${escHtml(s.route)}</div>` : ''}${coachAction}</div>`;
   });
   area.innerHTML = html;
@@ -2021,18 +2057,223 @@ async function bDoRecover(){
 }
 async function bCoachLogin(){ const pass=document.getElementById('bCpass').value;if(!pass)return; let res;try{res=await bApi({action:'auth',coach:pass});}catch(e){toast('確認できませんでした');return;} if(res.ok){bCoachPass=pass; closeModal();bUpdateCoachUI();toast('コーチモードON');bLoadList();} else toast('パスワードが違います'); }
 function bCoachOff(){bCoachPass=null; closeModal();bUpdateCoachUI();bLoadList();}
-function bUpdateCoachUI(){ document.getElementById('bCoachArea').innerHTML=bCoachPass ?'<span class="coachbadge">コーチON</span> <button class="b-ghost" onclick="openCoach()">OFF</button>' :'<button class="b-ghost" onclick="openCoach()">コーチ</button>'; document.getElementById('sAddBtn').style.display = bCoachPass ? '' : 'none'; }
+function bUpdateCoachUI(){ document.getElementById('bCoachArea').innerHTML=bCoachPass ?'<span class="coachbadge">コーチON</span> <button class="b-ghost" onclick="openCoach()">OFF</button>' :'<button class="b-ghost" onclick="openCoach()">コーチ</button>'; document.getElementById('sAddBtn').style.display = bCoachPass ? '' : 'none';
+  const navR=document.getElementById('navRoster'); if(navR) navR.style.display = bCoachPass ? '' : 'none';
+  if(!bCoachPass){ const pr=document.getElementById('pane-roster'); if(pr && pr.classList.contains('active')) setMainTab('score'); }
+  if(document.getElementById('pane-score') && document.getElementById('pane-score').classList.contains('active')) renderScoreList();
+}
 function bOpenAnswer(id){ showModal('<h3>回答する</h3><div class="vl-field"><label>回答</label><textarea id="bAText" maxlength="800" style="min-height:110px"></textarea></div><div class="vl-mbtns"><button class="ng" onclick="closeModal()">キャンセル</button><button class="ok" onclick="bSendAnswer(\''+id+'\')">送信</button></div>'); setTimeout(()=>{const el=document.getElementById('bAText');if(el)el.focus();},50); }
 async function bSendAnswer(id){ const text=document.getElementById('bAText').value.trim();if(!text)return; let res;try{res=await bApi({action:'answer',id,text,coach:bCoachPass});}catch(e){toast('送信できませんでした');return;} if(res.ok){closeModal();toast('回答しました');bLoadList();}else toast('送信できませんでした'); }
 function bDelQ(id){vlConfirm('質問を削除','この質問を削除しますか？元に戻せません。',()=>{bDoDel(id);});}
 async function bDoDel(id){ let res;try{res=await bApi({action:'delete',id,coach:bCoachPass});}catch(e){toast('削除できませんでした');return;} if(res.ok){closeModal();toast('削除しました');bLoadList();}else toast('削除できませんでした'); }
-function bAskBoardPass(){ showModal('<h3>チームの合言葉</h3><div class="vl-field"><label>あなたのチーム共通の合言葉（例：matsugaya）</label><input type="text" id="bBpass" placeholder="チームの合言葉"></div><div class="b-hint">同じ合言葉を入れた人どうしで、予定と質問を共有します。</div><div class="vl-mbtns"><button class="ng" onclick="closeModal()">キャンセル</button><button class="ok" onclick="bBoardLogin()">入る</button></div>'); setTimeout(()=>{const el=document.getElementById('bBpass');if(el)el.focus();},50); }
-function bBoardLogin(){ const v=(document.getElementById('bBpass').value||'').trim(); if(!v){toast('合言葉を入力してください');return;} bBoardPass=v; bCoachPass=null; safeLSset('baske_board_pass',bBoardPass); closeModal(); bUpdateCoachUI(); bLoadList(); }
+function bAskBoardPass(){ showModal('<h3>チームの合言葉</h3><div class="vl-field"><label>あなたのチーム共通の合言葉（例：tokyo）</label><input type="text" id="bBpass" placeholder="チームの合言葉"></div><div class="b-hint">同じ合言葉を入れた人どうしで、予定と質問を共有します。</div><div class="vl-mbtns"><button class="ng" onclick="closeModal()">キャンセル</button><button class="ok" onclick="bBoardLogin()">入る</button></div>'); setTimeout(()=>{const el=document.getElementById('bBpass');if(el)el.focus();},50); }
+function bBoardLogin(){ const v=(document.getElementById('bBpass').value||'').trim().toLowerCase(); if(!v){toast('合言葉を入力してください');return;} bBoardPass=v; bCoachPass=null; safeLSset('baske_board_pass',bBoardPass); closeModal(); bUpdateCoachUI(); bLoadList(); loadMyPlays().then(renderMyPlays); loadPlayerPlays().then(renderPlayerPlays); loadVlib().then(renderVlib); }
+
+/* ===== メンバー名簿（A/B・背番号）＋ 出欠 ＋ スコア（Supabase共有） ===== */
+let teamLabels={A:'Aチーム',B:'Bチーム'};
+async function loadTeamLabels(){
+  try{ const s=await tDataGet('teamLabels'); const d=s?JSON.parse(s):null; teamLabels={A:(d&&d.A)||'Aチーム', B:(d&&d.B)||'Bチーム'}; }
+  catch(e){ teamLabels={A:'Aチーム',B:'Bチーム'}; }
+}
+function persistTeamLabels(){ tDataSave('teamLabels', JSON.stringify(teamLabels)); }
+function teamLabel(key){ return key==='B'?teamLabels.B:teamLabels.A; }
+function editTeamLabels(){
+  vlFormModal('チーム名を編集',[
+    {key:'a',label:'Aチームの表示名（例：男子／1軍）',value:teamLabels.A},
+    {key:'b',label:'Bチームの表示名（例：女子／2軍）',value:teamLabels.B}
+  ],r=>{ teamLabels.A=(r.a||'').trim()||'Aチーム'; teamLabels.B=(r.b||'').trim()||'Bチーム'; persistTeamLabels(); vlCloseModal(); renderRoster(); });
+}
+let roster=null;
+async function loadRoster(){
+  try{ const s=await tDataGet('roster'); roster = s?JSON.parse(s):[]; if(!Array.isArray(roster)) roster=[]; }
+  catch(e){ roster=[]; }
+}
+function persistRoster(){ tDataSave('roster', JSON.stringify(roster)); }
+function renderRoster(){
+  const area=document.getElementById('rosterArea');
+  if(!roster){ area.innerHTML='<div class="b-empty">読み込み中…</div>'; return; }
+  const coach=!!bCoachPass;
+  const groups=[['A',teamLabel('A')],['B',teamLabel('B')],['','未分類']];
+  let html='';
+  if(coach) html+='<div class="vl-addrow" style="margin-top:0;margin-bottom:12px"><button class="vl-addbtn" onclick="editTeamLabels()">✎ チーム名を編集</button></div>';
+  groups.forEach(g=>{
+    const key=g[0], label=g[1];
+    const list=roster.filter(p=>(p.team||'')===key);
+    html+='<fieldset class="fs"><legend>'+esc(label)+'（'+list.length+'名）</legend>';
+    if(!list.length) html+='<span class="label">なし</span>';
+    list.forEach(p=>{
+      const idx=roster.indexOf(p);
+      html+='<div class="vl-row"><span class="vl-main"><span class="ic">'+esc(p.num||'?')+'</span><span class="lab">'+esc(p.name)+(p.grade?' <span class="tag">'+esc(String(p.grade))+'年</span>':'')+'</span></span>';
+      if(coach){
+        html+='<span class="vl-act">';
+        if(key!=='A') html+='<button title="'+esc(teamLabel('A'))+'へ移動" onclick="rMove('+idx+',\'A\')">A</button>';
+        if(key!=='B') html+='<button title="'+esc(teamLabel('B'))+'へ移動" onclick="rMove('+idx+',\'B\')">B</button>';
+        if(key!=='') html+='<button title="未分類へ" onclick="rMove('+idx+',\'\')">−</button>';
+        html+='<button title="編集" onclick="rEdit('+idx+')">✎</button>';
+        html+='<button class="del" title="削除" onclick="rDel('+idx+')">✕</button>';
+        html+='</span>';
+      }
+      html+='</div>';
+    });
+    html+='</fieldset>';
+  });
+  if(coach) html+='<div class="vl-addrow"><button class="vl-addbtn" onclick="rAdd()">＋ 選手を追加</button></div>';
+  else html+='<div class="b-hint">チーム分け・背番号の編集は、チームタブで「コーチ」をONにすると行えます。</div>';
+  area.innerHTML=html;
+}
+function rMove(idx,team){ roster[idx].team=team; persistRoster(); renderRoster(); }
+function rEdit(idx){
+  const p=roster[idx];
+  vlFormModal('選手を編集',[
+    {key:'name',label:'名前（フルネーム）',value:p.name},
+    {key:'num',label:'背番号',value:p.num||''},
+    {key:'grade',label:'学年（任意）',value:p.grade?String(p.grade):''}
+  ],r=>{ if(r.name.trim())p.name=r.name.trim(); p.num=(r.num||'').trim(); p.grade=parseInt(r.grade,10)||''; persistRoster(); vlCloseModal(); renderRoster(); });
+}
+function rAdd(){
+  vlFormModal('選手を追加',[
+    {key:'name',label:'名前（フルネーム）',value:''},
+    {key:'num',label:'背番号',value:''},
+    {key:'grade',label:'学年（任意）',value:''}
+  ],r=>{ if(!r.name.trim())return; roster.push({id:'r_'+Date.now(), name:r.name.trim(), num:(r.num||'').trim(), grade:parseInt(r.grade,10)||'', team:''}); persistRoster(); vlCloseModal(); renderRoster(); });
+}
+function rDel(idx){ const p=roster[idx]; vlConfirm('選手を削除','「'+p.name+'」を削除しますか？',()=>{ roster.splice(idx,1); persistRoster(); vlCloseModal(); renderRoster(); }); }
+
+/* ---- 出欠（試合連動・本人入力・出席/欠席） ---- */
+let attendance=null, attCurGame=null, attCurRec=null;
+async function loadAttendance(){
+  try{ const s=await tDataGet('attendance'); attendance = s?JSON.parse(s):{}; if(typeof attendance!=='object'||!attendance) attendance={}; }
+  catch(e){ attendance={}; }
+}
+function persistAttendance(){ tDataSave('attendance', JSON.stringify(attendance)); }
+function attTargetPlayers(){
+  if(!roster) return [];
+  if(attCurRec && attCurRec.target==='AB') return roster.filter(p=>p.team==='A'||p.team==='B');
+  return roster.filter(p=>p.team==='A');
+}
+async function openAtt(gameId){
+  attCurGame=String(gameId);
+  showModal('<h3>出欠</h3><div class="b-empty">読み込み中…</div>');
+  await loadRoster(); await loadAttendance(); await loadTeamLabels();
+  attCurRec = attendance[attCurGame] || {target:'A', marks:{}};
+  if(!attCurRec.marks) attCurRec.marks={};
+  renderAttModal();
+}
+function renderAttModal(){
+  const g=currentSchedules.find(s=>String(s.id)===attCurGame);
+  const coach=!!bCoachPass;
+  const players=attTargetPlayers();
+  let html='<h3>出欠　'+esc(g?formatSchedDate(g.date):'')+'</h3>';
+  html+='<div class="b-field"><label>対象チーム'+(coach?'':'（変更はコーチ）')+'</label><div class="b-vseg">'+
+    '<button class="'+(attCurRec.target!=='AB'?'active':'')+'" onclick="attSetTarget(\'A\')">'+esc(teamLabel('A'))+'のみ</button>'+
+    '<button class="'+(attCurRec.target==='AB'?'active':'')+'" onclick="attSetTarget(\'AB\')">'+esc(teamLabel('A'))+'・'+esc(teamLabel('B'))+'両方</button></div></div>';
+  if(!players.length){ html+='<div class="b-empty">対象選手がいません。「メンバー」でチーム分けをしてください。</div>'; }
+  players.forEach(p=>{
+    const st=attCurRec.marks[p.id]||'';
+    html+='<div class="vl-row"><span class="vl-main"><span class="lab">'+esc(p.name)+(p.num?' <span class="tag">#'+esc(p.num)+'</span>':'')+'</span></span><span class="vl-act">'+
+      '<button class="'+(st==='present'?'kf-done':'')+'" onclick="attMark(\''+p.id+'\',\'present\')">出席</button>'+
+      '<button class="'+(st==='absent'?'rec':'')+'" onclick="attMark(\''+p.id+'\',\'absent\')">欠席</button></span></div>';
+  });
+  const present=players.filter(p=>attCurRec.marks[p.id]==='present').length;
+  const absent=players.filter(p=>attCurRec.marks[p.id]==='absent').length;
+  html+='<div class="b-hint">出席 '+present+'／欠席 '+absent+'／未回答 '+(players.length-present-absent)+'（対象'+players.length+'名）</div>';
+  html+='<div class="vl-mbtns"><button class="ng" onclick="openAtt(attCurGame)">↻ 最新に更新</button><button class="ok" onclick="closeModal()">閉じる</button></div>';
+  document.getElementById('vlModal').innerHTML=html;
+}
+function attSetTarget(t){ if(!bCoachPass){ toast('対象の変更はコーチのみ'); return; } attCurRec.target=t; attendance[attCurGame]=attCurRec; persistAttendance(); renderAttModal(); }
+async function attMark(pid,st){
+  attCurRec.marks[pid]=st; renderAttModal();
+  try{
+    const s=await tDataGet('attendance'); const latest=s?JSON.parse(s):{};
+    const rec=latest[attCurGame]||{target:attCurRec.target,marks:{}}; if(!rec.marks)rec.marks={};
+    rec.marks[pid]=st; rec.target=attCurRec.target||rec.target||'A';
+    latest[attCurGame]=rec; tDataSave('attendance', JSON.stringify(latest));
+    attendance=latest; attCurRec=rec;
+  }catch(e){ attendance[attCurGame]=attCurRec; tDataSave('attendance', JSON.stringify(attendance)); }
+}
+
+/* ---- スコア（独立タブ・日程と無関係に残る／背番号表示） ---- */
+let scores=null, scCur=null;
+async function loadScores(){
+  try{ const s=await tDataGet('scores'); scores = s?JSON.parse(s):[]; if(!Array.isArray(scores)) scores=[]; }
+  catch(e){ scores=[]; }
+}
+function persistScores(){ tDataSave('scores', JSON.stringify(scores)); }
+function scEntryTotal(e){ let t=0; (e.rows||[]).forEach(r=>t+=(parseInt(r.pts,10)||0)); return t; }
+function renderScoreList(){
+  const area=document.getElementById('scoreArea');
+  if(!scores){ area.innerHTML='<div class="b-empty">読み込み中…</div>'; return; }
+  const coach=!!bCoachPass;
+  let html='';
+  if(coach) html+='<div class="vl-addrow" style="margin-top:0;margin-bottom:12px"><button class="vl-addbtn" onclick="scAddGame()">＋ 試合スコアを追加</button></div>';
+  if(!scores.length){ html+='<div class="b-empty">まだスコアがありません。'+(coach?'「＋ 試合スコアを追加」から記録できます。':'コーチが記録すると表示されます。')+'</div>'; area.innerHTML=html; return; }
+  const list=scores.slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  list.forEach(e=>{
+    const total=scEntryTotal(e), opp=parseInt(e.opp,10)||0;
+    const mark = total>opp?'〇 勝':(total<opp?'● 負':'△ 分');
+    html+='<div class="b-card"><div class="s-tag match">'+mark+'　'+scTargetLabel(e.target)+'</div>'+
+      '<div class="s-date">'+esc(formatSchedDate(e.date))+'　vs '+esc(e.opponent||'')+'</div>'+
+      '<div class="s-date" style="font-size:22px">自 '+total+' － '+opp+' 相手</div>'+
+      '<div class="b-cact"><button onclick="openScoreEntry(\''+e.id+'\')">'+(coach?'得点を入力／見る':'詳細を見る')+'</button>'+
+      (coach?'<button class="del" onclick="scDel(\''+e.id+'\')">削除</button>':'')+'</div></div>';
+  });
+  area.innerHTML=html;
+}
+function scTargetLabel(t){ return t==='AB'?(teamLabel('A')+'・'+teamLabel('B')):(t==='B'?teamLabel('B'):teamLabel('A')); }
+function scPlayersByTarget(target){
+  if(!roster) return [];
+  if(target==='AB') return roster.filter(p=>p.team==='A'||p.team==='B');
+  if(target==='B') return roster.filter(p=>p.team==='B');
+  return roster.filter(p=>p.team==='A');
+}
+async function scAddGame(){
+  await loadRoster(); await loadTeamLabels();
+  let html='<h3>試合スコアを追加</h3>'+
+    '<div class="vl-field"><label>日付</label><input type="date" id="scfDate"></div>'+
+    '<div class="vl-field"><label>対戦相手</label><input type="text" id="scfOpp" placeholder="例：松が谷高校"></div>'+
+    '<div class="vl-field"><label>対象チーム</label><select id="scfTarget"><option value="A">'+esc(teamLabel('A'))+'のみ</option><option value="B">'+esc(teamLabel('B'))+'のみ</option><option value="AB">'+esc(teamLabel('A'))+'・'+esc(teamLabel('B'))+'両方</option></select></div>'+
+    '<div class="vl-mbtns"><button class="ng" onclick="closeModal()">キャンセル</button><button class="ok" onclick="scDoAdd()">保存</button></div>';
+  showModal(html);
+  setTimeout(()=>{const e=document.getElementById('scfDate');if(e)e.focus();},50);
+}
+function scDoAdd(){
+  const date=(document.getElementById('scfDate').value||'').trim();
+  const oppName=(document.getElementById('scfOpp').value||'').trim();
+  const target=document.getElementById('scfTarget').value;
+  const players=scPlayersByTarget(target);
+  const rows = players.slice().sort((a,b)=>(parseInt(a.num,10)||999)-(parseInt(b.num,10)||999)).map(p=>({id:p.id,name:p.name,num:p.num||'',pts:0}));
+  const entry={id:'sc_'+Date.now(), date, opponent:oppName, target, rows, opp:''};
+  scores.push(entry); persistScores(); closeModal(); renderScoreList(); openScoreEntry(entry.id);
+}
+function scDel(id){ vlConfirm('スコアを削除','このスコアを削除しますか？',()=>{ scores=scores.filter(e=>e.id!==id); persistScores(); vlCloseModal(); renderScoreList(); }); }
+function scLiveTotal(){ if(!scCur)return 0; let t=0; (scCur.rows||[]).forEach(r=>t+=(parseInt(r.pts,10)||0)); return t; }
+function scUpdateTotal(){ const el=document.getElementById('scTotal'); if(el&&scCur) el.textContent='自 '+scLiveTotal()+' － '+(parseInt(scCur.opp,10)||0)+' 相手'; }
+function openScoreEntry(id){
+  scCur = scores.find(e=>e.id===id); if(!scCur)return;
+  const coach=!!bCoachPass;
+  let html='<h3>スコア　'+esc(formatSchedDate(scCur.date))+'　vs '+esc(scCur.opponent||'')+'</h3>';
+  html+='<div class="b-hint">自チーム選手の得点（背番号順）'+(coach?'':'／入力はコーチのみ')+'</div>';
+  if(!scCur.rows||!scCur.rows.length){ html+='<div class="b-empty">対象選手がいません（メンバーでA/Bを振り分けてから追加してください）。</div>'; }
+  (scCur.rows||[]).forEach((r,i)=>{
+    html+='<div class="vl-row"><span class="vl-main"><span class="ic">'+esc(r.num||'?')+'</span><span class="lab">'+esc(r.name)+'</span></span><span class="vl-act">'+
+      (coach?'<input type="text" inputmode="numeric" style="width:64px;text-align:center;padding:7px" value="'+esc(String(r.pts||''))+'" onchange="scSetRow('+i+',this.value)">':'<span class="lab" style="font-weight:700">'+esc(String(r.pts||0))+'</span>')+'</span></div>';
+  });
+  html+='<div class="b-field" style="margin-top:10px"><label>相手チーム得点（任意）</label>'+
+    (coach?'<input type="text" inputmode="numeric" value="'+esc(String(scCur.opp||''))+'" onchange="scSetOpp(this.value)">':'<div class="lab" style="font-weight:700">'+esc(String(scCur.opp||0))+'</div>')+'</div>';
+  html+='<div class="s-date" style="text-align:center;margin-top:10px" id="scTotal">自 '+scLiveTotal()+' － '+(parseInt(scCur.opp,10)||0)+' 相手</div>';
+  html+='<div class="vl-mbtns"><button class="ok" onclick="closeModal();renderScoreList()">閉じる</button></div>';
+  showModal(html);
+}
+function scSetRow(i,v){ if(!bCoachPass||!scCur)return; scCur.rows[i].pts=parseInt(v,10)||0; persistScores(); scUpdateTotal(); }
+function scSetOpp(v){ if(!bCoachPass||!scCur)return; scCur.opp=parseInt(v,10)||0; persistScores(); scUpdateTotal(); }
 
 let currentSchedules=[];
 
-loadMyPlays();renderMyPlays(); loadPlayerPlays();renderPlayerPlays(); buildPlayButtons(); layout();resetPositions();draw(); loadVlib();renderVlib();
-document.getElementById('vlOverlay').addEventListener('click',e=>{if(e.target.id==='vlOverlay')closeModal();}); document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+buildPlayButtons(); layout();resetPositions();draw();
+renderMyPlays(); renderPlayerPlays();
+if(bBoardPass){ loadMyPlays().then(renderMyPlays); loadPlayerPlays().then(renderPlayerPlays); loadVlib().then(renderVlib); }
+else { bBoardGate(); }
+document.getElementById('vlOverlay').addEventListener('click',e=>{if(e.target.id==='vlOverlay' && !boardGateActive)closeModal();}); document.addEventListener('keydown',e=>{if(e.key==='Escape' && !boardGateActive)closeModal();});
 if(!bConfigured()){ document.getElementById('bSetupNotice').style.display=''; document.getElementById('bListArea').innerHTML=''; }
 </script>
 </body>
