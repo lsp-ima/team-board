@@ -1734,9 +1734,15 @@ function bBoardGate(){
   showModal('<h3>チームの合言葉</h3><p class="b-hint" style="margin-bottom:14px">はじめに、あなたのチーム共通の合言葉を入力してください。予定・作戦盤・動画・名簿などをチームで共有するために使います。</p><div class="vl-field"><label>チームの合言葉（例：tokyo）</label><input type="text" id="bBpass"></div><div class="vl-mbtns"><button class="ok" onclick="bBoardGateSubmit()">入る</button></div>');
   setTimeout(()=>{const el=document.getElementById('bBpass');if(el)el.focus();},50);
 }
-function bBoardGateSubmit(){
+async function bBoardGateSubmit(){
   const v=(document.getElementById('bBpass').value||'').trim().toLowerCase();
   if(!v){toast('合言葉を入力してください');return;}
+  const btn=document.querySelector('#vlModal button.ok');
+  if(btn){btn.disabled=true;btn.textContent='確認中…';}
+  let t=null;
+  try{ t=await teamGet(v); }catch(e){ t=null; }
+  if(btn){btn.disabled=false;btn.textContent='入る';}
+  if(!t){ toast('この合言葉は登録されていません'); return; }
   bBoardPass=v; bCoachPass=null; safeLSset('baske_board_pass',bBoardPass);
   boardGateActive=false; closeModal(); bUpdateCoachUI();
   loadMyPlays().then(renderMyPlays); loadPlayerPlays().then(renderPlayerPlays); loadVlib().then(renderVlib);
@@ -2067,7 +2073,17 @@ async function bSendAnswer(id){ const text=document.getElementById('bAText').val
 function bDelQ(id){vlConfirm('質問を削除','この質問を削除しますか？元に戻せません。',()=>{bDoDel(id);});}
 async function bDoDel(id){ let res;try{res=await bApi({action:'delete',id,coach:bCoachPass});}catch(e){toast('削除できませんでした');return;} if(res.ok){closeModal();toast('削除しました');bLoadList();}else toast('削除できませんでした'); }
 function bAskBoardPass(){ showModal('<h3>チームの合言葉</h3><div class="vl-field"><label>あなたのチーム共通の合言葉（例：tokyo）</label><input type="text" id="bBpass" placeholder="チームの合言葉"></div><div class="b-hint">同じ合言葉を入れた人どうしで、予定と質問を共有します。</div><div class="vl-mbtns"><button class="ng" onclick="closeModal()">キャンセル</button><button class="ok" onclick="bBoardLogin()">入る</button></div>'); setTimeout(()=>{const el=document.getElementById('bBpass');if(el)el.focus();},50); }
-function bBoardLogin(){ const v=(document.getElementById('bBpass').value||'').trim().toLowerCase(); if(!v){toast('合言葉を入力してください');return;} bBoardPass=v; bCoachPass=null; safeLSset('baske_board_pass',bBoardPass); closeModal(); bUpdateCoachUI(); bLoadList(); loadMyPlays().then(renderMyPlays); loadPlayerPlays().then(renderPlayerPlays); loadVlib().then(renderVlib); }
+async function bBoardLogin(){
+  const v=(document.getElementById('bBpass').value||'').trim().toLowerCase();
+  if(!v){toast('合言葉を入力してください');return;}
+  const btn=document.querySelector('#vlModal button.ok');
+  if(btn){btn.disabled=true;btn.textContent='確認中…';}
+  let t=null;
+  try{ t=await teamGet(v); }catch(e){ t=null; }
+  if(btn){btn.disabled=false;btn.textContent='入る';}
+  if(!t){ toast('この合言葉は登録されていません'); return; }
+  bBoardPass=v; bCoachPass=null; safeLSset('baske_board_pass',bBoardPass); closeModal(); bUpdateCoachUI(); bLoadList(); loadMyPlays().then(renderMyPlays); loadPlayerPlays().then(renderPlayerPlays); loadVlib().then(renderVlib);
+}
 
 /* ===== メンバー名簿（A/B・背番号）＋ 出欠 ＋ スコア（Supabase共有） ===== */
 let teamLabels={A:'Aチーム',B:'Bチーム'};
