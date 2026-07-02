@@ -2290,7 +2290,12 @@ let currentSchedules=[];
 
 buildPlayButtons(); layout();resetPositions();draw();
 renderMyPlays(); renderPlayerPlays();
-if(bBoardPass){ loadMyPlays().then(renderMyPlays); loadPlayerPlays().then(renderPlayerPlays); loadVlib().then(renderVlib); }
+if(bBoardPass){
+  teamGet(bBoardPass).then(t=>{
+    if(!t){ bBoardPass=null; safeLSset('baske_board_pass',''); bBoardGate(); return; }
+    loadMyPlays().then(renderMyPlays); loadPlayerPlays().then(renderPlayerPlays); loadVlib().then(renderVlib);
+  });
+}
 else { bBoardGate(); }
 document.getElementById('vlOverlay').addEventListener('click',e=>{if(e.target.id==='vlOverlay' && !boardGateActive)closeModal();}); document.addEventListener('keydown',e=>{if(e.key==='Escape' && !boardGateActive)closeModal();});
 if(!bConfigured()){ document.getElementById('bSetupNotice').style.display=''; document.getElementById('bListArea').innerHTML=''; }
