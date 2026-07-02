@@ -1753,7 +1753,7 @@ function bConfigured(){ return !!(typeof sb!=='undefined' && sb); }
 /* ===== チーム（合言葉=team_id）＆ コーチ認証ヘルパー ===== */
 async function teamGet(team){
   if(!team) return null;
-  const { data } = await sb.from('teams').select('*').eq('team_id', team).maybeSingle();
+  const { data } = await sb.from('teams').select('*').eq('team_id', team).eq('active', true).maybeSingle();
   return data || null;
 }
 async function verifyCoach(team, pass){
