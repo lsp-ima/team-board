@@ -1754,7 +1754,9 @@ function bConfigured(){ return !!(typeof sb!=='undefined' && sb); }
 async function teamGet(team){
   if(!team) return null;
   const { data } = await sb.from('teams').select('*').eq('team_id', team).eq('active', true).maybeSingle();
-  return data || null;
+  if(!data) return null;
+  if(data.trial_expires_at && new Date(data.trial_expires_at) < new Date()) return null;
+  return data;
 }
 async function verifyCoach(team, pass){
   if(!team || !pass) return false;
