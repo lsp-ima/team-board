@@ -2344,7 +2344,7 @@ async function scAddGame(){
   await loadRoster(); await loadTeamLabels();
   let html='<h3>試合スコアを追加</h3>'+
     '<div class="vl-field"><label>日付</label><input type="date" id="scfDate"></div>'+
-    '<div class="vl-field"><label>対戦相手</label><input type="text" id="scfOpp" placeholder="例：松が谷高校"></div>'+
+    '<div class="vl-field"><label>対戦相手</label><input type="text" id="scfOpp" placeholder="例：〇〇中学校"></div>'+
     '<div class="vl-field"><label>対象チーム</label><select id="scfTarget"><option value="A">'+esc(teamLabel('A'))+'のみ</option><option value="B">'+esc(teamLabel('B'))+'のみ</option><option value="AB">'+esc(teamLabel('A'))+'・'+esc(teamLabel('B'))+'両方</option></select></div>'+
     '<div class="vl-mbtns"><button class="ng" onclick="closeModal()">キャンセル</button><button class="ok" onclick="scDoAdd()">保存</button></div>';
   showModal(html);
