@@ -2059,121 +2059,120 @@ async function bBoardGateSubmit(){
 
 function bConfigured(){ return !!(typeof sb!=='undefined' && sb); }
 
-/* ===== チーム（合言葉=team_id）＆ コーチ認証ヘルパー ===== */
+/* ===== チーム（合言葉=team_id）＆ コーチ認証ヘルパー =====
+   coach_pass / recovery_code は絶対にブラウザへ返さない。
+   判定はすべてSupabase側のRPC関数（security definer）で行う。
+   Supabase側の設定は 販売用/supabase_migration.sql を参照。 */
 async function teamGet(team){
   if(!team) return null;
-  const { data } = await sb.from('teams').select('*').eq('team_id', team).eq('active', true).maybeSingle();
-  if(!data) return null;
-  if(data.trial_expires_at && new Date(data.trial_expires_at) < new Date()) return null;
-  return data;
+  const { data, error } = await sb.rpc('team_public_info', { p_team: team });
+  if(error || !data || !data.length) return null;
+  const t = data[0];
+  if(!t.active) return null;
+  if(t.trial_expires_at && new Date(t.trial_expires_at) < new Date()) return null;
+  return t; // { team_id, active, trial_expires_at, has_coach }
 }
 async function verifyCoach(team, pass){
   if(!team || !pass) return false;
-  const t = await teamGet(team);
-  return !!(t && t.coach_pass && t.coach_pass === pass);
+  const { data, error } = await sb.rpc('verify_coach', { p_team: team, p_pass: pass });
+  return !error && data === true;
 }
-function genCode(){ return Math.random().toString(36).slice(2,8).toUpperCase(); }
 async function teamSetCoachPass(team, pass){
-  const recovery = genCode();
-  const { error } = await sb.from('teams').upsert({ team_id:team, coach_pass:pass, recovery_code:recovery });
-  return error ? null : recovery;
+  const { data, error } = await sb.rpc('setup_coach_pass', { p_team: team, p_pass: pass });
+  return error ? null : (data || null); // 既に設定済みならnullが返る
 }
-async function teamChangePass(team, newPass){
-  const { error } = await sb.from('teams').update({ coach_pass:newPass }).eq('team_id', team);
-  return !error;
+async function teamChangePass(team, oldPass, newPass){
+  const { data, error } = await sb.rpc('change_coach_pass', { p_team: team, p_old: oldPass, p_new: newPass });
+  return !error && data === true;
 }
 async function teamRecover(team, code, newPass){
-  const t = await teamGet(team);
-  if(!t || !t.recovery_code || t.recovery_code !== code) return false;
-  const { error } = await sb.from('teams').update({ coach_pass:newPass }).eq('team_id', team);
-  return !error;
+  const { data, error } = await sb.rpc('recover_coach_pass', { p_team: team, p_code: code, p_new: newPass });
+  return !error && data === true;
 }
 
-/* ===== team_data：作戦盤・動画・名簿・出欠・スコアをteam_idごとに共有保存 ===== */
+/* ===== team_data：作戦盤・動画・名簿・出欠・スコアをteam_idごとに共有保存 =====
+   直接テーブルへは書き込ませない。すべてRPC（security definer）経由。
+   'vlib'/'pmenu'/'roster'/'teamLabels' はコーチのみ書き込み可（RPC内で判定）。
+   'attendance'/'plays'/'pplays' は選手全員が書き込める想定なので誰でも可。
+   Supabase側の設定は 販売用/supabase_migration_2_tables.sql を参照。 */
 async function tDataGet(key){
   if(!bBoardPass || !bConfigured()) return '';
   try{
-    const { data } = await sb.from('team_data').select('value').eq('team_id', bBoardPass).eq('key', key).maybeSingle();
-    return (data && data.value) || '';
+    const { data, error } = await sb.rpc('team_data_get', { p_team: bBoardPass, p_key: key });
+    if(error) return '';
+    return data || '';
   }catch(e){ return ''; }
 }
 function tDataSave(key, value){
   if(!bBoardPass || !bConfigured()) return;
-  try{ sb.from('team_data').upsert({ team_id:bBoardPass, key, value, updated_at:new Date().toISOString() }).then(()=>{}); }
+  try{ sb.rpc('team_data_save', { p_team: bBoardPass, p_key: key, p_value: value, p_coach: bCoachPass }).then(()=>{}); }
   catch(e){}
 }
 
-/* ===== bApi：GASのかわりにSupabaseで同じ形のレスポンスを返す ===== */
+/* ===== bApi：GASのかわりにSupabaseで同じ形のレスポンスを返す =====
+   questions/schedules も直接テーブルへは書き込ませず、すべてRPC経由。
+   コーチ権限の最終判定はRPC側（verify_coach）で行う。 */
 async function bApi(params){
   const team = bBoardPass;            // 合言葉 = team_id
   try{
     switch(params.action){
       case 'auth': {
         const t = await teamGet(team);
-        if(!t || !t.coach_pass) return { ok:false, needSetup:true };
-        return { ok: t.coach_pass === params.coach };
+        if(!t || !t.has_coach) return { ok:false, needSetup:true };
+        return { ok: await verifyCoach(team, params.coach) };
       }
       case 'list': {
-        const { data, error } = await sb.from('questions').select('*').eq('team_id', team).order('id',{ascending:false});
-        if(error) return { ok:false };
         const isCoach = await verifyCoach(team, params.coach);
-        const items = (data||[]).filter(it => it.vis==='public' || isCoach);
-        return { ok:true, coach:isCoach, items };
+        const { data, error } = await sb.rpc('questions_list', { p_team: team, p_coach: params.coach });
+        if(error) return { ok:false };
+        return { ok:true, coach:isCoach, items: data||[] };
       }
       case 's_list': {
-        const { data, error } = await sb.from('schedules').select('*').eq('team_id', team).order('date',{ascending:true});
-        if(error) return { ok:false };
         const isCoach = await verifyCoach(team, params.coach);
+        const { data, error } = await sb.rpc('schedules_list', { p_team: team });
+        if(error) return { ok:false };
         return { ok:true, coach:isCoach, items: data||[] };
       }
       case 'post': {
-        const row = {
-          team_id: team,
-          name: params.anon==='1' ? '' : params.name,
-          anon: params.anon==='1',
-          vis: params.vis,
-          text: params.text,
-          time: new Date().toISOString(),
-          answered: false,
-          answer: ''
-        };
-        const { data, error } = await sb.from('questions').insert(row).select('id').single();
-        if(error) return { ok:false };
-        return { ok:true, ticket: params.vis==='private' ? String(data.id) : null };
+        const { data, error } = await sb.rpc('questions_post', {
+          p_team: team,
+          p_name: params.anon==='1' ? '' : params.name,
+          p_anon: params.anon==='1',
+          p_vis: params.vis,
+          p_text: params.text
+        });
+        if(error || data==null) return { ok:false };
+        return { ok:true, ticket: params.vis==='private' ? String(data) : null };
       }
       case 'ticket': {
         const id = parseInt(params.ticket,10);
         if(isNaN(id)) return { ok:false };
-        const { data, error } = await sb.from('questions').select('*').eq('id', id).maybeSingle();
-        if(error || !data) return { ok:false };
-        return { ok:true, item:data };
+        const { data, error } = await sb.rpc('questions_ticket', { p_id: id });
+        if(error || !data || !data.length) return { ok:false };
+        return { ok:true, item:data[0] };
       }
       case 'answer': {
-        if(!(await verifyCoach(team, params.coach))) return { ok:false };
-        const { error } = await sb.from('questions').update({ answered:true, answer:params.text }).eq('id', parseInt(params.id,10));
-        return { ok: !error };
+        const { data, error } = await sb.rpc('questions_answer', { p_team: team, p_coach: params.coach, p_id: parseInt(params.id,10), p_text: params.text });
+        return { ok: !error && data===true };
       }
       case 'delete': {
-        if(!(await verifyCoach(team, params.coach))) return { ok:false };
-        const { error } = await sb.from('questions').delete().eq('id', parseInt(params.id,10));
-        return { ok: !error };
+        const { data, error } = await sb.rpc('questions_delete', { p_team: team, p_coach: params.coach, p_id: parseInt(params.id,10) });
+        return { ok: !error && data===true };
       }
       case 's_save': {
-        if(!(await verifyCoach(team, params.coach))) return { ok:false };
         const idNum = params.id ? Number(params.id) : Date.now();
         const row = {
-          id: idNum, team_id: team, type: params.type,
+          id: idNum, type: params.type,
           date: params.date || null, opponent: params.opponent,
           venue: params.venue, meet: params.meet, end: params.end, route: params.route,
           items: params.items || ''
         };
-        const { error } = await sb.from('schedules').upsert(row);
-        return { ok: !error };
+        const { data, error } = await sb.rpc('schedules_save', { p_team: team, p_coach: params.coach, p_row: row });
+        return { ok: !error && data===true };
       }
       case 's_del': {
-        if(!(await verifyCoach(team, params.coach))) return { ok:false };
-        const { error } = await sb.from('schedules').delete().eq('id', Number(params.id));
-        return { ok: !error };
+        const { data, error } = await sb.rpc('schedules_delete', { p_team: team, p_coach: params.coach, p_id: Number(params.id) });
+        return { ok: !error && data===true };
       }
       default: return { ok:false };
     }
@@ -2218,7 +2217,7 @@ function sOpenForm(id) {
   const isEdit = id !== undefined;
   const d = isEdit ? currentSchedules.find(s=>String(s.id) === String(id)) : {type:'match', date:'', opponent:'', venue:'', meet:'', end:'', route:'', items:''};
   let html = `<h3>${isEdit ? '予定を編集' : '予定を追加'}</h3>
-  <div class="vl-field"><label>種類</label><select id="sf_type" style="width:100%; background:#1f242b;"><option value="match" ${d.type==='match'?'selected':''}>練習試合</option><option value="tourney" ${d.type==='tourney'?'selected':''}>大会</option></select></div>
+  <div class="vl-field"><label>種類</label><select id="sf_type" style="width:100%"><option value="match" ${d.type==='match'?'selected':''}>練習試合</option><option value="tourney" ${d.type==='tourney'?'selected':''}>大会</option></select></div>
   <div class="vl-field"><label>日付</label><input type="date" id="sf_date" value="${escAttr(toDateInputValue(d.date))}"></div>
   <div class="row" style="gap:10px"><div class="vl-field" style="flex:1"><label>対戦相手</label><input type="text" id="sf_opp" value="${escAttr(d.opponent)}"></div><div class="vl-field" style="flex:1"><label>会場</label><input type="text" id="sf_venue" value="${escAttr(d.venue)}"></div></div>
   <div class="row" style="gap:10px"><div class="vl-field" style="flex:1"><label>集合時間</label><input type="text" id="sf_meet" value="${escAttr(d.meet)}"></div><div class="vl-field" style="flex:1"><label>終了予定</label><input type="text" id="sf_end" value="${escAttr(d.end)}"></div></div>
@@ -2356,7 +2355,7 @@ async function openCoach(){
   if(!bBoardPass){ toast('先に合言葉でチームに入ってください'); return; }
   showModal('<h3>コーチモード</h3><div class="b-empty">確認中…</div>');
   const t = await teamGet(bBoardPass);
-  if(!t || !t.coach_pass){
+  if(!t || !t.has_coach){
     showModal('<h3>コーチパスワードの設定</h3>'+
       '<p style="font-size:12.5px;line-height:1.6;color:var(--muted)">このチーム（合言葉：'+esc(bBoardPass)+'）のコーチ用パスワードはまだ設定されていません。新しく決めてください。</p>'+
       '<div class="vl-field"><label>新しいパスワード</label><input type="text" id="bCnew"></div>'+
@@ -2395,14 +2394,20 @@ async function bDoChangePass(){
   if(!p1){ toast('パスワードを入力してください'); return; }
   if(p1!==p2){ toast('確認用と一致しません'); return; }
   toast('変更中…');
-  const ok=await teamChangePass(bBoardPass, p1);
+  const ok=await teamChangePass(bBoardPass, bCoachPass, p1);
   if(ok){ bCoachPass=p1; closeModal(); toast('パスワードを変更しました'); } else toast('変更に失敗しました');
+}
+function bSupportMailHref(){
+  const subject=encodeURIComponent('TEAM BOARD パスワード再設定のお願い');
+  const body=encodeURIComponent('チームの合言葉：'+(bBoardPass||'（未入力）')+'\n\nコーチパスワードとリカバリーコードの両方がわからなくなりました。再設定をお願いします。');
+  return 'mailto:lsp.imamura@gmail.com?subject='+subject+'&body='+body;
 }
 function bAskRecover(){
   showModal('<h3>パスワードのリセット</h3><p style="font-size:12.5px;line-height:1.6;color:var(--muted)">設定時に控えたリカバリーコードと、新しいパスワードを入力してください。</p>'+
     '<div class="vl-field"><label>リカバリーコード</label><input type="text" id="bRcode"></div>'+
     '<div class="vl-field"><label>新しいパスワード</label><input type="text" id="bRnew"></div>'+
-    '<div class="vl-mbtns"><button class="ng" onclick="closeModal()">キャンセル</button><button class="ok" onclick="bDoRecover()">リセット</button></div>');
+    '<div class="vl-mbtns"><button class="ng" onclick="closeModal()">キャンセル</button><button class="ok" onclick="bDoRecover()">リセット</button></div>'+
+    '<div class="b-hint" style="margin-top:14px">リカバリーコードもわからない場合は<a href="'+bSupportMailHref()+'">こちらから運営に連絡</a>してください。</div>');
   setTimeout(()=>{const el=document.getElementById('bRcode');if(el)el.focus();},50);
 }
 async function bDoRecover(){
