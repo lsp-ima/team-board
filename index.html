@@ -2048,10 +2048,10 @@ async function bBoardGateSubmit(){
   if(!v){toast('合言葉を入力してください');return;}
   const btn=document.querySelector('#vlModal button.ok');
   if(btn){btn.disabled=true;btn.textContent='確認中…';}
-  let t=null;
-  try{ t=await teamGet(v); }catch(e){ t=null; }
+  let r={status:'error',t:null};
+  try{ r=await teamGetStatus(v); }catch(e){ r={status:'error',t:null}; }
   if(btn){btn.disabled=false;btn.textContent='入る';}
-  if(!t){ toast('この合言葉は登録されていません'); return; }
+  if(r.status!=='ok'){ gateFailToast(r.status); return; }
   bBoardPass=v; bCoachPass=null; safeLSset('baske_board_pass',bBoardPass);
   boardGateActive=false; closeModal(); bUpdateCoachUI();
   loadMyPlays().then(renderMyPlays); loadPlayerPlays().then(renderPlayerPlays); loadVlib().then(renderVlib);
@@ -2076,6 +2076,23 @@ async function verifyCoach(team, pass){
   if(!team || !pass) return false;
   const { data, error } = await sb.rpc('verify_coach', { p_team: team, p_pass: pass });
   return !error && data === true;
+}
+/* ゲート用: 「未登録」「期限切れ」「通信エラー」を区別して返す(teamGetは従来のまま) */
+async function teamGetStatus(team){
+  if(!team) return {status:'none', t:null};
+  let data, error;
+  try{ ({ data, error } = await sb.rpc('team_public_info', { p_team: team })); }
+  catch(e){ return {status:'error', t:null}; }
+  if(error) return {status:'error', t:null};
+  if(!data || !data.length || !data[0].active) return {status:'none', t:null};
+  const t = data[0];
+  if(t.trial_expires_at && new Date(t.trial_expires_at) < new Date()) return {status:'expired', t:null};
+  return {status:'ok', t};
+}
+function gateFailToast(status){
+  if(status==='error'){ toast('通信エラーが発生しました。時間をおいてもう一度お試しください'); }
+  else if(status==='expired'){ toast('ご利用期間が終了しています。継続をご希望の場合はお申し込みをお願いします'); }
+  else { toast('この合言葉は登録されていません'); }
 }
 async function teamSetCoachPass(team, pass){
   const { data, error } = await sb.rpc('setup_coach_pass', { p_team: team, p_pass: pass });
@@ -2437,10 +2454,10 @@ async function bBoardLogin(){
   if(!v){toast('合言葉を入力してください');return;}
   const btn=document.querySelector('#vlModal button.ok');
   if(btn){btn.disabled=true;btn.textContent='確認中…';}
-  let t=null;
-  try{ t=await teamGet(v); }catch(e){ t=null; }
+  let r={status:'error',t:null};
+  try{ r=await teamGetStatus(v); }catch(e){ r={status:'error',t:null}; }
   if(btn){btn.disabled=false;btn.textContent='入る';}
-  if(!t){ toast('この合言葉は登録されていません'); return; }
+  if(r.status!=='ok'){ gateFailToast(r.status); return; }
   bBoardPass=v; bCoachPass=null; safeLSset('baske_board_pass',bBoardPass); closeModal(); bUpdateCoachUI(); bLoadList(); loadMyPlays().then(renderMyPlays); loadPlayerPlays().then(renderPlayerPlays); loadVlib().then(renderVlib);
 }
 
