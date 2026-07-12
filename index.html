@@ -2156,7 +2156,7 @@ async function bApi(params){
       case 'ticket': {
         const id = parseInt(params.ticket,10);
         if(isNaN(id)) return { ok:false };
-        const { data, error } = await sb.rpc('questions_ticket', { p_id: id });
+        const { data, error } = await sb.rpc('questions_ticket', { p_team: team, p_id: id });
         if(error || !data || !data.length) return { ok:false };
         return { ok:true, item:data[0] };
       }
