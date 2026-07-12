@@ -1,0 +1,1600 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>作戦盤 デモ ｜ TEAM BOARD（架空チーム：青葉中バスケ部）</title>
+<meta name="theme-color" content="#f7f5f0">
+<style>
+:root{
+  --court:#c8965a;
+  --bg:#f7f5f0;--bg2:#fdfcf9;
+  --panel:#ffffff;--panel2:#f3f0e8;
+  --card:#ffffff;--field:#ffffff;--well:#faf8f2;
+  --tint:rgba(26,43,74,.03);
+  --text:#1a2b4a;--muted:#7a8496;--muted2:#9aa1ad;--text-soft:#4c5a72;
+  --accent:#e2591f;--accent-strong:#c44812;
+  --accent-tint:rgba(226,89,31,.09);--accent-line:rgba(226,89,31,.32);
+  --focus-ring:rgba(226,89,31,.14);
+  --blue:#1976d2;--red:#d32f2f;--ball:#ef6c00;--ok:#2e7d32;
+  --line:#e4dfd3;--line-soft:rgba(26,43,74,.09);
+  --dash:#cfc8b8;
+  --del-bg:#fbe9e7;--del-fg:#c62828;--del-line:#e57373;
+  --ic-empty-bg:#e9e5da;--ic-empty-fg:#9aa1ad;
+  --ok-fg:#2e7d32;--ok-line:#a5d6a7;--ok-bg:rgba(46,125,50,.08);
+  --amber-fg:#8a5a00;--amber-bg:#fdf3e0;--amber-line:#ecd6a4;
+  --rose-fg:#ad2d3c;--rose-bg:#fbe9eb;--rose-line:#f2bec4;
+  --radius:16px;--radius-sm:11px;
+  --shadow:0 10px 30px rgba(26,43,74,.10);
+  --shadow-sm:0 3px 12px rgba(26,43,74,.07);
+  --glow:rgba(26,43,74,.20);
+  --grad-accent:linear-gradient(135deg,#22355a 0%,#1a2b4a 100%);
+  --grad-orange:linear-gradient(135deg,#f0662a 0%,#d94e12 100%);
+  --tabs-bg:rgba(253,252,249,.82);
+  --toast-bg:rgba(26,43,74,.96);
+  --overlay:rgba(26,43,74,.35);
+  --bgfx1:rgba(226,89,31,.06);--bgfx2:rgba(26,43,74,.05);
+}
+html.dark{
+  --bg:#0e1218;--bg2:#151b24;
+  --panel:#1b212b;--panel2:#222a35;
+  --card:#1d2430;--field:#161c24;--well:#12171e;
+  --tint:rgba(255,255,255,.03);
+  --text:#eef1f5;--muted:#8b95a3;--muted2:#7d858e;--text-soft:#aeb6bf;
+  --accent:#ff7a33;--accent-strong:#ffab7d;
+  --accent-tint:rgba(255,122,51,.13);--accent-line:rgba(255,122,51,.40);
+  --focus-ring:rgba(255,122,51,.20);
+  --line:#2a323d;--line-soft:rgba(255,255,255,.07);
+  --dash:#4a525c;
+  --del-bg:#3a2326;--del-fg:#ff9a9a;--del-line:#a44444;
+  --ic-empty-bg:#333c47;--ic-empty-fg:#7d858e;
+  --ok-fg:#8be29a;--ok-line:#2e7d32;--ok-bg:rgba(46,125,50,.14);
+  --amber-fg:#ffcf8f;--amber-bg:#3a2f1f;--amber-line:#6b4f25;
+  --rose-fg:#ffc9cd;--rose-bg:#3a2326;--rose-line:#6b3f3a;
+  --shadow:0 10px 34px rgba(0,0,0,.42);
+  --shadow-sm:0 4px 16px rgba(0,0,0,.30);
+  --glow:rgba(255,122,51,.28);
+  --grad-accent:linear-gradient(135deg,#ff8a45 0%,#e85d1a 100%);
+  --tabs-bg:rgba(18,23,31,.75);
+  --toast-bg:rgba(28,34,43,.96);
+  --overlay:rgba(4,7,11,.6);
+  --bgfx1:rgba(255,122,51,.08);--bgfx2:rgba(55,120,199,.05);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;color:var(--text);min-height:100vh;
+  font-family:-apple-system,"Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif;
+  background:
+    radial-gradient(1100px 520px at 20% -8%,var(--bgfx1),transparent 60%),
+    radial-gradient(900px 480px at 90% 0%,var(--bgfx2),transparent 55%),
+    linear-gradient(180deg,var(--bg2) 0%,var(--bg) 42%);
+  background-attachment:fixed;
+  display:flex;flex-direction:column;align-items:center;padding:0}
+
+/* デモ告知バー */
+.demo-band{width:100%;background:var(--amber-bg);border-bottom:1px solid var(--amber-line);
+  color:var(--amber-fg);font-size:12px;line-height:1.6;padding:8px 14px;
+  display:flex;align-items:center;justify-content:center;gap:8px 14px;flex-wrap:wrap;text-align:center}
+.demo-band a{color:var(--accent-strong);font-weight:700;text-decoration:underline}
+.demo-band .tour-btn{font-size:11.5px;padding:4px 12px;border-radius:20px;border:1px solid var(--amber-line);
+  background:transparent;color:var(--amber-fg);cursor:pointer;font-weight:700}
+.demo-band .tour-btn:hover{border-color:var(--accent);color:var(--accent-strong)}
+
+.app-header{width:100%;max-width:760px;display:flex;align-items:center;gap:11px;padding:16px 18px 12px}
+.app-header .logo{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;
+  justify-content:center;font-size:20px;background:var(--grad-accent);box-shadow:0 6px 16px var(--glow)}
+.app-header .ttl{display:flex;flex-direction:column;line-height:1.2}
+.app-header .ttl b{font-size:17px;font-weight:900;letter-spacing:.02em}
+.app-header .ttl span{font-size:11px;color:var(--accent);letter-spacing:.18em;font-weight:700}
+.team-badge{margin-left:auto;font-size:11px;color:var(--muted);border:1px solid var(--line);
+  background:var(--panel);padding:5px 12px;border-radius:20px;white-space:nowrap}
+.theme-toggle{margin-left:8px;width:38px;height:38px;border-radius:12px;padding:0;font-size:17px;
+  display:flex;align-items:center;justify-content:center;border:1px solid var(--line);
+  background:var(--panel);cursor:pointer}
+.theme-toggle:hover{border-color:var(--accent)}
+
+.main-tabs{display:flex;width:100%;max-width:760px;gap:4px;padding:6px;
+  position:sticky;top:0;z-index:20;
+  background:var(--tabs-bg);backdrop-filter:blur(14px) saturate(1.2);
+  -webkit-backdrop-filter:blur(14px) saturate(1.2);
+  border-bottom:1px solid var(--line-soft)}
+.main-tabs button{flex:1;padding:12px 0;font-size:13.5px;font-weight:700;background:transparent;
+  border:none;color:var(--muted);cursor:pointer;border-radius:11px;transition:.18s;font-family:inherit;letter-spacing:.02em}
+.main-tabs button.active{color:#fff;background:var(--grad-accent);box-shadow:0 6px 16px var(--glow)}
+.main-tabs button:not(.active):hover{color:var(--text);background:var(--tint)}
+.main-pane{display:none;width:100%;max-width:760px;padding:16px 14px 48px;flex-direction:column;align-items:center;gap:0}
+.main-pane.active{display:flex;animation:fadeUp .32s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes popIn{from{transform:scale(.92)}to{transform:scale(1)}}
+
+button,select{font-size:13px;padding:9px 15px;border-radius:var(--radius-sm);
+  border:1px solid var(--line);background:var(--panel);color:var(--text);cursor:pointer;
+  font-family:inherit;transition:.16s}
+input[type=text],input[type=date],textarea{font-size:13px;padding:10px 13px;border-radius:var(--radius-sm);
+  border:1px solid var(--line);background:var(--field);color:var(--text);font-family:inherit;transition:.16s}
+input[type=text]:focus,input[type=date]:focus,textarea:focus,select:focus{outline:none;
+  border-color:var(--accent);box-shadow:0 0 0 3px var(--focus-ring)}
+button:hover{background:var(--panel2)}
+button:active{transform:translateY(1px)}
+button.active{background:var(--grad-accent);border-color:transparent;color:#fff;font-weight:700;box-shadow:0 5px 14px var(--glow)}
+button.rec{background:linear-gradient(135deg,#ef4444,#d32f2f)!important;border-color:transparent!important;color:#fff!important;font-weight:700!important}
+.kf-done{background:linear-gradient(135deg,#43a047,#2e7d32)!important;border-color:transparent!important;color:#fff!important;font-weight:700!important}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
+.seg{display:flex;border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden;background:var(--field)}
+.seg button{border:none;border-radius:0;background:transparent}
+.seg button.active{border-radius:0}
+.label{font-size:12px;color:var(--muted);line-height:1.6}
+fieldset{border:1px solid var(--line);border-radius:var(--radius);padding:13px 15px;margin:0;width:100%;
+  background:linear-gradient(180deg,var(--tint),transparent),var(--panel)}
+legend{font-size:11px;color:var(--accent);padding:0 8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.myplay{display:inline-flex;align-items:center;gap:0;margin:4px 6px 4px 0}
+.myplay button{background:var(--panel2);border-radius:10px}
+.myplay button.active{background:var(--grad-accent);color:#fff}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);flex-wrap:wrap;justify-content:center;padding:10px 0}
+.legend span{display:flex;align-items:center;gap:6px}
+.dot{width:11px;height:11px;border-radius:50%;display:inline-block;box-shadow:0 0 0 2px var(--line-soft)}
+canvas{display:block;border-radius:var(--radius);touch-action:none;box-shadow:var(--shadow);max-width:100%;border:1px solid var(--line-soft)}
+.full-w{width:100%}
+.sub-seg{display:flex;border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden;
+  margin:16px 0 12px;width:100%;background:var(--field);padding:4px;gap:4px}
+.sub-seg button{flex:1;border:none;border-radius:9px;padding:10px 0;font-size:13.5px;font-weight:700;background:transparent;color:var(--muted)}
+.sub-seg button.active{background:var(--grad-accent);color:#fff;box-shadow:0 4px 12px var(--glow)}
+.fs{width:100%;margin-top:12px}
+
+/* 動画ライブラリ */
+.vid-tabs{display:flex;gap:6px;margin-bottom:16px;width:100%;background:var(--field);padding:5px;border-radius:var(--radius-sm);border:1px solid var(--line)}
+.vid-tabs button{flex:1;background:transparent;border:none;padding:10px 0;font-weight:700;color:var(--muted);border-radius:9px}
+.vid-tabs button.active{background:var(--grad-accent);border-color:transparent;color:#fff;box-shadow:0 4px 12px var(--glow)}
+.vid-help{font-size:11.5px;color:var(--muted);line-height:1.65;margin-bottom:14px;width:100%}
+.vl-ptabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:18px;width:100%}
+.vl-ptabs button{font-size:12px;padding:7px 15px;border-radius:20px;border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer}
+.vl-ptabs button.active{background:var(--grad-accent);border-color:transparent;color:#fff;font-weight:700;box-shadow:0 4px 12px var(--glow)}
+.vl-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+.vl-name{font-size:17px;color:var(--text);font-weight:900}
+.vl-style{font-size:11.5px;color:var(--accent-strong);background:var(--accent-tint);padding:3px 11px;border-radius:20px;font-weight:600}
+.vl-note{font-size:12.5px;color:var(--text-soft);line-height:1.7;margin:8px 0 14px;white-space:pre-wrap;
+  background:var(--tint);border-left:3px solid var(--accent);padding:10px 13px;border-radius:0 10px 10px 0}
+.vl-row{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;background:var(--card);margin-bottom:8px;border:1px solid var(--line);transition:.16s}
+.vl-row.has:hover{border-color:var(--accent);background:var(--panel2);transform:translateY(-1px);box-shadow:var(--shadow-sm)}
+.vl-main{flex:1;display:flex;align-items:center;gap:11px;min-width:0;text-decoration:none;color:inherit}
+.vl-row .ic{width:28px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;background:var(--grad-accent);color:#fff}
+.vl-row.empty .ic{background:var(--ic-empty-bg);color:var(--ic-empty-fg)}
+.vl-row .lab{font-size:13.5px;line-height:1.35;overflow-wrap:anywhere}
+.vl-row.empty .lab{color:var(--muted)}
+.vl-row .tag{font-size:10.5px;color:var(--muted2);margin-left:6px;white-space:nowrap}
+.vl-act{display:flex;gap:5px;flex-shrink:0}
+.vl-act button{width:32px;height:32px;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;padding:0}
+.vl-act button:hover{color:var(--text);border-color:var(--accent)}
+.vl-act button.del:hover{color:var(--del-fg);border-color:var(--del-line)}
+.vl-addrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px;width:100%}
+.vl-addbtn{font-size:12px;padding:9px 15px;border-radius:10px;border:1px dashed var(--dash);background:transparent;color:var(--muted);cursor:pointer}
+.vl-addbtn:hover{color:var(--accent-strong);border-color:var(--accent);background:var(--accent-tint)}
+#vidArea{width:100%}
+
+/* 掲示板・スケジュール */
+.board-topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:8px;width:100%}
+.board-topbar h2{font-size:17px;font-weight:900;margin:0;letter-spacing:.02em}
+.coachbadge{font-size:11px;color:var(--ok-fg);border:1px solid var(--ok-line);background:var(--ok-bg);padding:3px 11px;border-radius:20px;font-weight:600}
+.b-tabs{display:flex;gap:6px;margin-bottom:16px;width:100%;background:var(--field);padding:5px;border-radius:var(--radius-sm);border:1px solid var(--line)}
+.b-tabs button{flex:1;background:transparent;border:none;padding:10px 0;font-weight:700;font-size:13px;color:var(--muted);border-radius:9px}
+.b-tabs button.active{background:var(--grad-accent);border-color:transparent;color:#fff;box-shadow:0 4px 12px var(--glow)}
+.b-field{margin-bottom:13px;width:100%}
+.b-field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600}
+.b-field input,.b-field textarea{width:100%}
+.b-field textarea{min-height:96px;resize:vertical;line-height:1.6}
+.b-opts{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:13px;width:100%}
+.b-opt{display:flex;align-items:center;gap:7px;font-size:13px}
+.b-opt input{width:18px;height:18px;accent-color:var(--accent)}
+.b-primary{background:var(--grad-orange);border:none;color:#fff;font-weight:700;padding:13px 20px;border-radius:12px;font-size:14px;cursor:pointer;width:100%;box-shadow:0 7px 18px rgba(226,89,31,.30);letter-spacing:.03em}
+.b-primary:hover{filter:brightness(1.06);transform:translateY(-1px)}
+.b-ghost{background:transparent;border:1px solid var(--line);color:var(--muted);padding:8px 14px;border-radius:10px;font-size:12px;cursor:pointer}
+.b-ghost:hover{color:var(--text);border-color:var(--accent)}
+.b-card{background:linear-gradient(180deg,var(--tint),transparent),var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:15px;margin-bottom:12px;box-shadow:var(--shadow-sm);animation:fadeUp .4s ease backwards}
+.b-card:nth-child(2){animation-delay:.05s}
+.b-card:nth-child(3){animation-delay:.1s}
+.b-card:nth-child(4){animation-delay:.15s}
+.b-card .who{font-size:12px;color:var(--accent-strong);font-weight:700}
+.b-card .who.anon{color:var(--muted)}
+.b-card .btime{font-size:11px;color:var(--muted);float:right}
+.b-card .qt{font-size:14px;line-height:1.65;margin:8px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.b-pvt{font-size:10.5px;color:var(--amber-fg);background:var(--amber-bg);border:1px solid var(--amber-line);padding:1px 8px;border-radius:20px;margin-left:6px}
+.b-ans{background:linear-gradient(180deg,var(--ok-bg),transparent);border:1px solid var(--ok-line);border-radius:11px;padding:11px 13px;margin-top:10px}
+.b-ans .lab{font-size:11px;color:var(--ok-fg);font-weight:700;margin-bottom:5px}
+.b-ans .body{font-size:13.5px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
+.b-waiting{font-size:12px;color:var(--muted);margin-top:9px}
+.b-cact{display:flex;gap:7px;margin-top:11px}
+.b-cact button{font-size:12px;padding:7px 14px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);color:var(--text);cursor:pointer}
+.b-cact button.del{color:var(--del-fg)}
+.b-hint{font-size:11.5px;color:var(--muted);line-height:1.65;margin:6px 0 10px}
+.b-empty{font-size:13px;color:var(--muted);text-align:center;padding:28px 0}
+.b-vseg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--field);padding:4px;gap:4px}
+.b-vseg button{background:transparent;border:none;color:var(--text);padding:9px 15px;font-size:13px;cursor:pointer;border-radius:7px}
+.b-vseg button.active{background:var(--grad-accent);color:#fff;font-weight:700}
+
+/* スケジュールカード */
+.s-tag{display:inline-block;padding:4px 11px;border-radius:8px;font-size:11px;font-weight:700;margin-bottom:11px;letter-spacing:.03em}
+.s-tag.match{background:var(--amber-bg);color:var(--amber-fg);border:1px solid var(--amber-line)}
+.s-tag.tourney{background:var(--rose-bg);color:var(--rose-fg);border:1px solid var(--rose-line)}
+.s-date{font-size:17px;font-weight:900;color:var(--text);margin-bottom:11px}
+.s-detail{font-size:13px;line-height:1.65;color:var(--muted);margin-bottom:5px;display:flex;gap:10px}
+.s-detail .sl{min-width:64px;flex-shrink:0}
+.s-detail .sv{color:var(--text);font-weight:500;overflow-wrap:anywhere}
+.s-route{background:var(--well);padding:11px 14px;border-radius:11px;font-size:12.5px;line-height:1.65;white-space:pre-wrap;margin-top:13px;border:1px solid var(--line)}
+.s-route-title{font-size:11.5px;color:var(--accent-strong);font-weight:700;margin-bottom:7px;display:flex;align-items:center;gap:5px}
+.s-count{display:inline-block;margin-left:8px;padding:4px 11px;border-radius:8px;font-size:11px;font-weight:700;letter-spacing:.03em;
+  background:var(--accent-tint);color:var(--accent-strong);border:1px solid var(--accent-line)}
+.s-count.today{background:var(--grad-orange);color:#fff;border-color:transparent}
+.s-count.past{background:var(--tint);color:var(--muted);border-color:var(--line)}
+
+/* モーダル・トースト */
+.vl-overlay{position:fixed;inset:0;background:var(--overlay);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:1000;padding:18px}
+.vl-overlay.show{display:flex;animation:fadeUp .2s ease}
+.vl-modal{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px;width:100%;max-width:420px;box-shadow:0 24px 60px rgba(0,0,0,.28);max-height:90vh;overflow-y:auto;animation:popIn .22s ease}
+.vl-modal h3{margin:0 0 18px;font-size:16px;font-weight:900}
+.vl-field{margin-bottom:14px}
+.vl-field label{display:block;font-size:11.5px;color:var(--muted);margin-bottom:7px;font-weight:600}
+.vl-field input,.vl-field textarea,.vl-field select{width:100%;font-size:13px;padding:11px 13px;border-radius:10px;border:1px solid var(--line);background:var(--field);color:var(--text);font-family:inherit}
+.vl-field textarea{min-height:88px;resize:vertical;line-height:1.6}
+.vl-mbtns{display:flex;gap:9px;justify-content:flex-end;margin-top:22px}
+.vl-mbtns button{padding:10px 19px;border-radius:10px;font-size:13px;cursor:pointer;border:1px solid var(--line)}
+.vl-mbtns .ok{background:var(--grad-orange);border-color:transparent;color:#fff;font-weight:700}
+.vl-mbtns .ng{background:var(--panel2);color:var(--text)}
+.vl-mbtns .danger{background:linear-gradient(135deg,#ef4444,#d32f2f);border-color:transparent;color:#fff;font-weight:700}
+.demo-note{font-size:11.5px;color:var(--amber-fg);background:var(--amber-bg);border:1px solid var(--amber-line);border-radius:10px;padding:9px 12px;line-height:1.6;margin-bottom:14px}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(8px);background:var(--toast-bg);backdrop-filter:blur(8px);color:#fff;padding:12px 20px;border-radius:12px;font-size:13px;opacity:0;transition:.28s;z-index:9999;pointer-events:none;box-shadow:var(--shadow);border:1px solid rgba(255,255,255,.12)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* 製品ツアー */
+.tour-overlay{position:fixed;inset:0;z-index:2000;display:none}
+.tour-overlay.show{display:block}
+.tour-spot{position:absolute;border-radius:14px;box-shadow:0 0 0 9999px rgba(10,16,28,.62);
+  transition:all .35s cubic-bezier(.4,.1,.2,1);pointer-events:none;border:2px solid rgba(255,255,255,.85)}
+.tour-card{position:absolute;background:var(--panel);border:1px solid var(--line);border-radius:16px;
+  padding:20px 20px 16px;width:min(340px,calc(100vw - 32px));box-shadow:0 24px 60px rgba(0,0,0,.35);
+  transition:all .35s cubic-bezier(.4,.1,.2,1);animation:popIn .25s ease}
+.tour-card .t-step{font-size:11px;color:var(--accent);font-weight:700;letter-spacing:.08em;margin-bottom:8px}
+.tour-card h4{margin:0 0 8px;font-size:15.5px;font-weight:900;line-height:1.5}
+.tour-card p{margin:0;font-size:13px;line-height:1.75;color:var(--text-soft)}
+.tour-card .t-btns{display:flex;gap:8px;align-items:center;margin-top:16px}
+.tour-card .t-skip{background:transparent;border:none;color:var(--muted);font-size:12px;padding:8px 4px;cursor:pointer}
+.tour-card .t-skip:hover{color:var(--text)}
+.tour-card .t-back{padding:9px 14px;border-radius:10px;font-size:12.5px;border:1px solid var(--line);background:var(--panel2);color:var(--text);cursor:pointer;margin-left:auto}
+.tour-card .t-next{padding:9px 18px;border-radius:10px;font-size:13px;font-weight:700;border:none;background:var(--grad-orange);color:#fff;cursor:pointer;box-shadow:0 5px 14px rgba(226,89,31,.3)}
+.tour-card .t-next:hover{filter:brightness(1.06)}
+.tour-card .t-cta{display:block;text-align:center;background:var(--grad-orange);color:#fff;font-weight:700;
+  font-size:13.5px;padding:12px 16px;border-radius:11px;text-decoration:none;margin-top:14px;box-shadow:0 6px 16px rgba(226,89,31,.3)}
+.tour-dots{display:flex;gap:5px;margin-top:14px}
+.tour-dots i{width:6px;height:6px;border-radius:50%;background:var(--line);transition:.2s}
+.tour-dots i.on{background:var(--accent);width:16px;border-radius:4px}
+
+@media(max-width:560px){
+  .app-header{padding:12px 14px 8px}
+  .team-badge{display:none}
+  .main-tabs{overflow-x:auto;justify-content:flex-start;gap:3px;padding:6px 8px;scrollbar-width:none}
+  .main-tabs::-webkit-scrollbar{display:none}
+  .main-tabs button{flex:0 0 auto;white-space:nowrap;padding:10px 13px;font-size:12.5px}
+  .main-pane{padding:12px 10px 44px}
+  .sub-seg button,.vid-tabs button,.b-tabs button{font-size:12.5px}
+}
+</style>
+<script>
+(function(){var t;try{t=localStorage.getItem('demoTheme')}catch(e){}
+if(!t)t=(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';
+if(t==='dark')document.documentElement.classList.add('dark');})();
+</script>
+</head>
+<body>
+
+<div class="demo-band" id="demoBand">
+  <span>これはデモ画面です（架空チーム・入力はお試し用で、リロードすると最初に戻ります）</span>
+  <span>無料体験はこちら → <a href="https://lsp-ima.github.io/team-board-LP/#trial" target="_blank" rel="noopener">お申し込みページ</a></span>
+  <button class="tour-btn" onclick="tourStart()">▶ 使い方ツアーを見る</button>
+</div>
+
+<header class="app-header">
+  <div class="logo">🏀</div>
+  <div class="ttl"><b>作戦盤</b><span>TEAM BOARD</span></div>
+  <span class="team-badge">チーム：青葉中バスケ部（デモ）</span>
+  <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()" aria-label="ライト／ダーク切り替え">🌙</button>
+</header>
+
+<nav class="main-tabs" id="mainTabs">
+  <button class="active" data-tab="board" onclick="setMainTab('board')">🏀 作戦盤</button>
+  <button data-tab="video" onclick="setMainTab('video')">🎬 動画</button>
+  <button data-tab="menu" onclick="setMainTab('menu')">📋 練習メニュー</button>
+  <button data-tab="bbs" onclick="setMainTab('bbs')">🔒 チーム</button>
+  <button data-tab="score" onclick="setMainTab('score')">🏀 スコア</button>
+  <button id="navRoster" data-tab="roster" onclick="setMainTab('roster')">👥 メンバー</button>
+</nav>
+
+<div class="main-pane active" id="pane-board">
+  <div class="seg">
+    <button class="active" id="btnHalf" onclick="setCourt('half')">ハーフコート</button>
+    <button id="btnFull" onclick="setCourt('full')">フルコート</button>
+  </div>
+
+  <canvas id="court" style="margin-top:12px"></canvas>
+  <div class="legend">
+    <span><span class="dot" style="background:var(--blue)"></span>オフェンス 1–5</span>
+    <span><span class="dot" style="background:var(--red)"></span>ディフェンス 1–5</span>
+    <span><span class="dot" style="background:var(--ball)"></span>ボール</span>
+  </div>
+
+  <div class="full-w">
+    <div class="row">
+      <button onclick="demoDrawInfo()">✏️ ルートを描く</button>
+      <button id="btnPlay" onclick="playAnim()" disabled>▶ 再生</button>
+      <button id="btnStop" onclick="stopAnim()" style="display:none">■ 停止</button>
+      <button onclick="resetPositions();draw()">リセット</button>
+      <select id="speed" onchange="speed=parseFloat(this.value)">
+        <option value="0.5">0.5x</option><option value="1" selected>1x</option>
+        <option value="1.5">1.5x</option><option value="2">2x</option>
+      </select>
+    </div>
+    <div class="label" id="status" style="margin-top:8px">左のベンチから選手をコートへドラッグして配置できます。下のプレーを押すと動きを再生できます。</div>
+
+    <fieldset class="fs" id="myPlayBox">
+      <legend>マイプレー（コーチ）</legend>
+      <div id="myPlayButtons"></div>
+      <div class="label" style="margin-top:8px">※製品版では、コーチや選手が描いた動きをここに保存してチーム全員で共有できます。</div>
+    </fieldset>
+  </div>
+</div>
+
+<div class="main-pane" id="pane-video">
+  <div class="vid-help">試合や練習の動画をチームで共有するライブラリです。「全員」はチーム共通、「選手ごと」は一人ひとりの課題に合わせた動画を置けます。</div>
+  <div class="vid-tabs">
+    <button class="active" data-vcat="all" onclick="setVidTab('all')">全員</button>
+    <button data-vcat="player" onclick="setVidTab('player')">選手ごと</button>
+  </div>
+  <div id="vidArea"></div>
+</div>
+
+<div class="main-pane" id="pane-menu">
+  <div class="vid-help">作戦盤で作った動きやYouTube動画を、練習メニューとしてひとつにまとめられます。追加・編集はコーチのみできます。</div>
+  <div class="vl-ptabs" id="pmenuTagTabs"></div>
+  <input type="text" id="pmenuSearch" placeholder="🔍 キーワードで探す（例：ドリブル）" style="width:100%;margin-bottom:14px" oninput="onPmenuSearch(this.value)">
+  <div id="pmenuArea"></div>
+  <div class="vl-addrow" id="pmenuAddRow" style="display:none">
+    <button class="vl-addbtn" onclick="addPmenuItem()">＋ 練習メニューを追加</button>
+  </div>
+</div>
+
+<div class="main-pane" id="pane-bbs">
+  <div class="board-topbar">
+    <h2>チーム連絡・予定</h2>
+    <div id="bCoachArea"><button class="b-ghost" onclick="openCoach()">コーチ</button></div>
+  </div>
+
+  <div class="sub-seg" style="margin-top:0;margin-bottom:14px" id="bModeSeg">
+    <button class="active" id="bModeSched" onclick="setBMode('schedule')">📅 スケジュール</button>
+    <button id="bModeBbs" onclick="setBMode('bbs')">💬 質問ボード</button>
+  </div>
+
+  <div id="bModePaneSched" class="full-w">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <span class="label">今後の予定</span>
+      <button class="b-ghost" id="sAddBtn" style="display:none;color:var(--accent);border-color:var(--accent)" onclick="sOpenForm()">＋ 予定追加</button>
+    </div>
+    <div id="sListArea"></div>
+  </div>
+
+  <div id="bModePaneBbs" class="full-w" style="display:none">
+    <div class="b-tabs">
+      <button class="active" id="bTabList" onclick="setBTab('list')">みんなの質問</button>
+      <button id="bTabPost" onclick="setBTab('post')">質問する</button>
+      <button id="bTabTicket" onclick="setBTab('ticket')">受付番号で確認</button>
+    </div>
+    <div id="bPaneList">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span id="bCoachState" class="label"></span>
+        <button class="b-ghost" onclick="bLoadList()">↻ 更新</button>
+      </div>
+      <div id="bListArea"></div>
+    </div>
+    <div id="bPanePost" style="display:none">
+      <div class="b-field">
+        <label>質問・聞きたいこと</label>
+        <textarea id="bQText" maxlength="500" placeholder="例：ステップバックのコツがわかりません"></textarea>
+      </div>
+      <div class="b-opts">
+        <label class="b-opt"><input type="checkbox" id="bQAnon"> 匿名で出す</label>
+      </div>
+      <div class="b-field" id="bNameField">
+        <label>名前</label>
+        <input type="text" id="bQName" maxlength="30" placeholder="例：やまだ">
+      </div>
+      <div class="b-field">
+        <label>公開のしかた</label>
+        <div class="b-vseg" id="bVisSeg">
+          <button class="active" data-vis="public" onclick="setBVis('public')">みんなに見せる</button>
+          <button data-vis="private" onclick="setBVis('private')">コーチにだけ</button>
+        </div>
+        <div class="b-hint" id="bVisHint">「みんなに見せる」＝掲示板に質問と回答が表示されます。</div>
+      </div>
+      <button class="b-primary" onclick="bSubmit()">質問を送る</button>
+    </div>
+    <div id="bPaneTicket" style="display:none">
+      <div class="b-hint">「コーチにだけ」で送ったときの受付番号で回答を確認できます。（デモ用：<b>A7K2Q9</b> を入れてみてください）</div>
+      <div class="b-field"><label>受付番号</label><input type="text" id="bTCode" maxlength="10" placeholder="例：A7K2Q9"></div>
+      <button class="b-primary" onclick="bCheckTicket()">確認する</button>
+      <div id="bTicketResult" style="margin-top:14px"></div>
+    </div>
+  </div>
+</div>
+
+<div class="main-pane" id="pane-score">
+  <div class="board-topbar"><h2>スコア</h2></div>
+  <div class="b-hint">試合ごとの得点記録です。がんばりの記録がチームの財産として残ります。入力はコーチが行います。</div>
+  <div id="scoreArea" class="full-w"></div>
+</div>
+
+<div class="main-pane" id="pane-roster">
+  <div class="board-topbar"><h2>メンバー</h2></div>
+  <div class="b-hint">チーム分け・背番号を設定できます（コーチ専用）。チーム名は自由に変更できます（例：男子／女子）。</div>
+  <div id="rosterArea" class="full-w"></div>
+</div>
+
+<div class="vl-overlay" id="vlOverlay"><div class="vl-modal" id="vlModal"></div></div>
+<div class="toast" id="toast"></div>
+
+<div class="tour-overlay" id="tourOverlay">
+  <div class="tour-spot" id="tourSpot"></div>
+  <div class="tour-card" id="tourCard"></div>
+</div>
+<script>
+'use strict';
+/* =========================================================
+   TEAM BOARD デモ版
+   - 通信は一切行いません（Supabase等への接続なし）
+   - すべて架空チーム「青葉中バスケ部」のサンプルデータです
+   - 入力・変更はページを開いている間だけ有効（リロードで初期化）
+========================================================= */
+
+/* ---------- ユーティリティ ---------- */
+function esc(s){return(s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function escAttr(s){return esc(s);}
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toast._tm); toast._tm=setTimeout(()=>t.classList.remove('show'),2600);
+}
+function showModal(html){
+  document.getElementById('vlModal').innerHTML=html;
+  document.getElementById('vlModal').style.maxWidth='420px';
+  document.getElementById('vlOverlay').classList.add('show');
+}
+function closeModal(){ document.getElementById('vlOverlay').classList.remove('show'); }
+function vlConfirm(title,message,onOk){
+  showModal('<h3>'+esc(title)+'</h3><div class="vl-note">'+esc(message)+'</div>'+
+    '<div class="vl-mbtns"><button class="ng" onclick="closeModal()">キャンセル</button>'+
+    '<button class="danger" id="vlOkBtn">削除</button></div>');
+  document.getElementById('vlOkBtn').onclick=onOk;
+}
+function vlFormModal(title,fields,onOk){
+  let html='<h3>'+esc(title)+'</h3>';
+  fields.forEach(f=>{
+    if(f.type==='textarea'){
+      html+='<div class="vl-field"><label>'+esc(f.label)+'</label><textarea id="vlf_'+f.key+'">'+esc(f.value||'')+'</textarea></div>';
+    }else{
+      html+='<div class="vl-field"><label>'+esc(f.label)+'</label><input id="vlf_'+f.key+'" type="text" value="'+escAttr(f.value||'')+'" placeholder="'+escAttr(f.ph||'')+'"></div>';
+    }
+  });
+  html+='<div class="vl-mbtns"><button class="ng" onclick="closeModal()">キャンセル</button><button class="ok" id="vlOkBtn">保存</button></div>';
+  showModal(html);
+  document.getElementById('vlOkBtn').onclick=()=>{
+    const r={}; fields.forEach(f=>{ r[f.key]=document.getElementById('vlf_'+f.key).value; }); onOk(r);
+  };
+  const first=document.getElementById('vlf_'+fields[0].key); if(first)first.focus();
+}
+
+/* ---------- テーマ ---------- */
+function applyTheme(t,save){
+  document.documentElement.classList.toggle('dark',t==='dark');
+  CANVAS_THEME=(t==='dark')?{apron:'#1d232b',frame:'#e8722e'}:{apron:'#efece3',frame:'#1a2b4a'};
+  const b=document.getElementById('themeBtn'); if(b)b.textContent=(t==='dark'?'☀️':'🌙');
+  if(save){try{localStorage.setItem('demoTheme',t)}catch(e){}}
+  if(typeof draw==='function'){try{draw()}catch(e){}}
+}
+function toggleTheme(){
+  applyTheme(document.documentElement.classList.contains('dark')?'light':'dark',true);
+}
+
+/* ---------- 日付ヘルパー（デモは常に「今日」を基準に予定を生成） ---------- */
+function relDate(offsetDays){
+  const d=new Date(); d.setDate(d.getDate()+offsetDays);
+  const pad=n=>('0'+n).slice(-2);
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+}
+function formatSchedDate(val){
+  try{
+    if(!val)return'';
+    const d=new Date(String(val));
+    if(isNaN(d.getTime()))return String(val);
+    const days=['日','月','火','水','木','金','土'];
+    return (d.getMonth()+1)+'月'+d.getDate()+'日('+days[d.getDay()]+')';
+  }catch(e){return String(val);}
+}
+function schedDaysLeft(val){
+  try{
+    const d=new Date(String(val));
+    if(isNaN(d.getTime()))return null;
+    const today=new Date(); today.setHours(0,0,0,0);
+    const day=new Date(d.getFullYear(),d.getMonth(),d.getDate());
+    return Math.round((day-today)/86400000);
+  }catch(e){return null;}
+}
+function schedCountBadge(val){
+  const n=schedDaysLeft(val);
+  if(n===null)return'';
+  if(n===0)return'<span class="s-count today">🔥 今日</span>';
+  if(n===1)return'<span class="s-count today">明日</span>';
+  if(n>1)return'<span class="s-count">あと'+n+'日</span>';
+  return'<span class="s-count past">終了</span>';
+}
+
+/* =========================================================
+   架空チーム「青葉中バスケ部」のサンプルデータ
+========================================================= */
+let teams=[{id:'A',name:'Aチーム'},{id:'B',name:'Bチーム'}];
+
+let roster=[
+  {id:'p01',name:'佐藤 大輝', num:'4', grade:3, team:'A'},
+  {id:'p02',name:'鈴木 蓮',   num:'5', grade:3, team:'A'},
+  {id:'p03',name:'高橋 悠斗', num:'6', grade:3, team:'A'},
+  {id:'p04',name:'伊藤 陽翔', num:'7', grade:3, team:'A'},
+  {id:'p05',name:'田中 湊',   num:'8', grade:2, team:'A'},
+  {id:'p06',name:'渡辺 樹',   num:'9', grade:2, team:'A'},
+  {id:'p07',name:'山本 颯太', num:'4', grade:2, team:'B'},
+  {id:'p08',name:'小林 大和', num:'5', grade:2, team:'B'},
+  {id:'p09',name:'佐々木 律', num:'6', grade:2, team:'B'},
+  {id:'p10',name:'中村 奏太', num:'7', grade:1, team:'B'},
+  {id:'p11',name:'加藤 悠真', num:'8', grade:1, team:'B'},
+  {id:'p12',name:'吉田 新',   num:'9', grade:1, team:'B'}
+];
+
+let currentSchedules=[
+  {id:'s1', type:'match', date:relDate(2), opponent:'桜台中学校', venue:'桜台中 体育館',
+   meet:'8時15分', end:'12時30分',
+   items:'お弁当・水筒・ゼッケン・タオル',
+   route:'青葉駅 8:24発（各停）→ 桜台駅 8:36着\n北口を出て徒歩7分。正門から入り、体育館は右奥です。'},
+  {id:'s2', type:'match', date:relDate(6), opponent:'緑山中学校', venue:'青葉中 体育館（ホーム）',
+   meet:'8時30分', end:'12時00分',
+   items:'水筒・ゼッケン',
+   route:''},
+  {id:'s3', type:'tourney', date:relDate(9), opponent:'東台中学校（市内秋季大会 1回戦）', venue:'市民総合体育館',
+   meet:'7時45分', end:'17時00分',
+   items:'お弁当・水筒・ユニフォーム上下・保険証のコピー',
+   route:'青葉駅 7:58発 → 中央駅 8:10着（乗り換え）→ 総合公園駅 8:19着\n体育館まで徒歩5分。入口で学校名を伝えて入館します。'},
+  {id:'s4', type:'match', date:relDate(13), opponent:'北中学校', venue:'北中 体育館',
+   meet:'12時45分', end:'17時00分',
+   items:'水筒・ゼッケン',
+   route:'青葉駅 12:51発 → 北町駅 13:02着。東口から徒歩10分。'}
+];
+
+/* 出欠（試合ID → {target, marks}） */
+let attendance={
+  s1:{target:'A', marks:{p01:'present',p02:'present',p03:'present',p04:'present',p05:'present',p06:'absent',
+                          p07:'present',p08:'present',p09:'present'}},
+  s3:{target:'A', marks:{p01:'present',p02:'present',p04:'present'}}
+};
+
+/* スコア（過去の試合の得点記録） */
+let scores=[
+  {id:'sc1', date:relDate(-4), opponent:'桜台中学校', target:'A', opp:48, rows:[
+    {id:'p01',name:'佐藤 大輝',num:'4',pts:14},{id:'p02',name:'鈴木 蓮',num:'5',pts:10},
+    {id:'p03',name:'高橋 悠斗',num:'6',pts:8},{id:'p04',name:'伊藤 陽翔',num:'7',pts:11},
+    {id:'p05',name:'田中 湊',num:'8',pts:6},{id:'p06',name:'渡辺 樹',num:'9',pts:3}]},
+  {id:'sc2', date:relDate(-11), opponent:'東台中学校', target:'A', opp:55, rows:[
+    {id:'p01',name:'佐藤 大輝',num:'4',pts:12},{id:'p02',name:'鈴木 蓮',num:'5',pts:7},
+    {id:'p03',name:'高橋 悠斗',num:'6',pts:9},{id:'p04',name:'伊藤 陽翔',num:'7',pts:5},
+    {id:'p05',name:'田中 湊',num:'8',pts:8},{id:'p06',name:'渡辺 樹',num:'9',pts:0}]},
+  {id:'sc3', date:relDate(-18), opponent:'北中学校', target:'B', opp:31, rows:[
+    {id:'p07',name:'山本 颯太',num:'4',pts:10},{id:'p08',name:'小林 大和',num:'5',pts:8},
+    {id:'p09',name:'佐々木 律',num:'6',pts:6},{id:'p10',name:'中村 奏太',num:'7',pts:7},
+    {id:'p11',name:'加藤 悠真',num:'8',pts:4},{id:'p12',name:'吉田 新',num:'9',pts:2}]}
+];
+
+/* 質問ボード */
+let questions=[
+  {id:'q1', name:'田中 湊', anon:false, vis:'public', time:relDate(-1),
+   text:'ディフェンスのとき、腰を低く保つのがきつくて後半に足が止まります。何かコツはありますか？',
+   answered:true, answer:'いい質問！ずっと低いままでいる必要はなく、ボールマンに近いときだけ一段低く構えよう。あとは足首まわりのストレッチを練習前に。次の練習で一緒に確認しよう。'},
+  {id:'q2', name:'', anon:true, vis:'public', time:relDate(-2),
+   text:'シュートを打ったあとに手首が少し痛くなります。フォームが悪いのでしょうか。',
+   answered:true, answer:'痛みがあるうちは無理をしないこと。スナップだけで飛ばそうとすると手首に負担がきます。膝→体→腕の順で力を伝える意識で。痛みが続くようなら必ず教えてください。'},
+  {id:'q3', name:'加藤 悠真', anon:false, vis:'public', time:relDate(-2),
+   text:'次の桜台中との練習試合、ユニフォームは白と紺どちらですか？',
+   answered:true, answer:'今回は白です。念のため両方持ってきてもらえると安心です。'},
+  {id:'q4', name:'吉田 新', anon:false, vis:'public', time:relDate(0),
+   text:'リバウンドのとき、どの位置に走り込めばいいのかいつも迷います。',
+   answered:false, answer:''}
+];
+const DEMO_TICKET={code:'A7K2Q9',
+  text:'（コーチにだけ）最近シュートが全然入らなくて、正直つらいです。スタメンを外れるのが不安です。',
+  answered:true,
+  answer:'相談してくれてありがとう。調子の波は誰にでもあるし、いま君を外す考えはありません。今週は基礎のシューティングを一緒にやろう。焦らなくて大丈夫。'};
+
+/* 動画ライブラリ */
+let vlib={
+  all:{
+    note:'チーム全員に見てほしい動画をここに置けます。試合の録画やお手本動画のURLを貼るだけで、選手も保護者も同じものを見られます。',
+    videos:[
+      {label:'9月 練習試合 vs 桜台中（前半）', demo:true},
+      {label:'オフェンスの約束事（コーチ解説）', demo:true},
+      {label:'次の大会に向けて', demo:false}
+    ]
+  },
+  byPlayer:{
+    p01:{style:'ドライブからの合わせ', note:'1対1で抜いたあと、周りを見る余裕を作るのが今月のテーマ。', videos:[
+      {label:'vs 桜台中 佐藤の得点シーン集', demo:true},
+      {label:'お手本：ドライブキックアウト', demo:true}]},
+    p02:{style:'3ポイントの安定', note:'', videos:[
+      {label:'シューティングフォーム（横から撮影）', demo:true}]},
+    p05:{style:'ディフェンスの footwork', note:'', videos:[]},
+    p10:{style:'レイアップの左右両方', note:'左のレイアップを重点練習中。', videos:[
+      {label:'左レイアップ 練習記録（9月）', demo:true}]}
+  }
+};
+
+/* 練習メニュー */
+const PMENU_TAGS=['オフェンス','ディフェンス','1対1','フットワーク・体力','シュート','チーム戦術','その他'];
+let pmenu=[
+  {name:'1対1のドリブル突破', tag:'1対1', note:'コーンを相手に見立てて、緩急でかわす。抜いたあと2歩でレイアップまで。左右3本ずつ×3セット。', play:'P&R（ロール）', demo:true},
+  {name:'ミート＆キャッチからのシュート', tag:'シュート', note:'パスをもらう瞬間に「止まる・そろえる・打つ」。ゴール下→フリースロー→3Pの順で距離を伸ばす。', play:'', demo:true},
+  {name:'スライドステップ（守備の基本）', tag:'フットワーク・体力', note:'ラインからラインまでサイドステップ。腰の高さを変えないこと。往復10本。', play:'', demo:false},
+  {name:'ピック&ロールの合わせ', tag:'チーム戦術', note:'作戦盤の「右P&R」の動きを見てから、5人でポジションを確認。スクリーンの角度を意識。', play:'P&R（ロール）', demo:false}
+];
+
+/* =========================================================
+   作戦盤（コート描画・ドラッグ・プレー再生）
+========================================================= */
+let CANVAS_THEME=document.documentElement.classList.contains('dark')?{apron:'#1d232b',frame:'#e8722e'}:{apron:'#efece3',frame:'#1a2b4a'};
+const canvas=document.getElementById('court');
+const ctx=canvas.getContext('2d');
+const HALF={wm:15,lm:14};
+const FULL={wm:28,lm:15};
+let courtMode='half',scale=1,padPx=22,W=680,H=560;
+const BENCH_W=78;
+let originX=BENCH_W;
+let speed=1,animating=false,raf=null;
+let drag=null,dragOff={x:0,y:0};
+const R_PLAYER=0.65;
+let offense=[],defense=[],ball={m:[7.5,2.2]};
+let paths=[],ballPath=[];
+let currentPlayName=null;
+
+function mx(m){return originX+m*scale;}
+function my(m){return padPx+m*scale;}
+function px2m(px,py){return[(px-originX)/scale,(py-padPx)/scale];}
+
+function layout(){
+  const conf=courtMode==='half'?HALF:FULL;
+  const courtPx=612;
+  scale=courtPx/conf.wm;
+  originX=BENCH_W;
+  W=BENCH_W+conf.wm*scale+14;
+  H=conf.lm*scale+padPx*2;
+  canvas.width=W; canvas.height=H;
+}
+function line(w){ctx.strokeStyle='rgba(255,255,255,0.92)';ctx.lineWidth=w||2;}
+
+function drawHalf(){
+  const w=HALF.wm,l=HALF.lm;
+  const cp=10,cl=mx(0)-cp,ct=my(0)-cp,cw=w*scale+cp*2,ch=l*scale+cp*2;
+  ctx.fillStyle=CANVAS_THEME.apron;ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#c8965a';ctx.fillRect(cl,ct,cw,ch);
+  ctx.strokeStyle=CANVAS_THEME.frame;ctx.lineWidth=5;ctx.strokeRect(cl+2.5,ct+2.5,cw-5,ch-5);
+  line(2.5);
+  ctx.strokeRect(mx(0),my(0),w*scale,l*scale);
+  const cx=w/2,basketY=1.575;
+  ctx.beginPath();ctx.moveTo(mx(cx-0.9),my(1.2));ctx.lineTo(mx(cx+0.9),my(1.2));ctx.stroke();
+  ctx.beginPath();ctx.arc(mx(cx),my(basketY),0.225*scale,0,7);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(mx(cx),my(1.2));ctx.lineTo(mx(cx),my(basketY-0.225));ctx.stroke();
+  const keyW=4.9,ftY=5.8;
+  ctx.strokeRect(mx(cx-keyW/2),my(0),keyW*scale,ftY*scale);
+  ctx.beginPath();ctx.arc(mx(cx),my(ftY),1.8*scale,0,Math.PI);ctx.stroke();
+  ctx.setLineDash([7,7]);
+  ctx.beginPath();ctx.arc(mx(cx),my(ftY),1.8*scale,Math.PI,2*Math.PI);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath();ctx.arc(mx(cx),my(basketY),1.25*scale,0,Math.PI);ctx.stroke();
+  const r3=6.75,cornerX=0.9;
+  const dx=(cx-cornerX);
+  const yAtArc=basketY+Math.sqrt(Math.max(0,r3*r3-dx*dx));
+  ctx.beginPath();ctx.moveTo(mx(cornerX),my(0));ctx.lineTo(mx(cornerX),my(yAtArc));ctx.stroke();
+  ctx.beginPath();ctx.moveTo(mx(w-cornerX),my(0));ctx.lineTo(mx(w-cornerX),my(yAtArc));ctx.stroke();
+  const a0=Math.atan2(yAtArc-basketY,-dx);
+  const a1=Math.atan2(yAtArc-basketY,dx);
+  ctx.beginPath();ctx.arc(mx(cx),my(basketY),r3*scale,a1,a0);ctx.stroke();
+  ctx.beginPath();ctx.arc(mx(cx),my(l),1.8*scale,Math.PI,2*Math.PI);ctx.stroke();
+}
+function drawFull(){
+  const w=FULL.wm,l=FULL.lm;
+  const cp=10,cl=mx(0)-cp,ct=my(0)-cp,cw=w*scale+cp*2,ch=l*scale+cp*2;
+  ctx.fillStyle=CANVAS_THEME.apron;ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#c8965a';ctx.fillRect(cl,ct,cw,ch);
+  ctx.strokeStyle=CANVAS_THEME.frame;ctx.lineWidth=5;ctx.strokeRect(cl+2.5,ct+2.5,cw-5,ch-5);
+  line(2.5);
+  ctx.strokeRect(mx(0),my(0),w*scale,l*scale);
+  const cy=l/2;
+  ctx.beginPath();ctx.moveTo(mx(w/2),my(0));ctx.lineTo(mx(w/2),my(l));ctx.stroke();
+  ctx.beginPath();ctx.arc(mx(w/2),my(cy),1.8*scale,0,7);ctx.stroke();
+  for(let s=0;s<2;s++){
+    const dir=s===0?1:-1;
+    const baseX=s===0?0:w;
+    const bx=baseX+dir*1.575;
+    ctx.beginPath();ctx.moveTo(mx(baseX+dir*1.2),my(cy-0.9));ctx.lineTo(mx(baseX+dir*1.2),my(cy+0.9));ctx.stroke();
+    ctx.beginPath();ctx.arc(mx(bx),my(cy),0.225*scale,0,7);ctx.stroke();
+    const keyL=5.8,keyW=4.9;
+    const kx=s===0?baseX:baseX-keyL;
+    ctx.strokeRect(mx(kx),my(cy-keyW/2),keyL*scale,keyW*scale);
+    const ftX=s===0?baseX+keyL:baseX-keyL;
+    ctx.beginPath();ctx.arc(mx(ftX),my(cy),1.8*scale,-Math.PI/2,Math.PI/2,s===1);ctx.stroke();
+    ctx.setLineDash([6,6]);
+    ctx.beginPath();ctx.arc(mx(ftX),my(cy),1.8*scale,Math.PI/2,-Math.PI/2,s===1);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath();ctx.arc(mx(bx),my(cy),1.25*scale,Math.PI/2,-Math.PI/2,s===1);ctx.stroke();
+    const r3=6.75,cornerY=0.9;
+    const dy=(cy-cornerY);
+    const xAtArc=bx+dir*Math.sqrt(Math.max(0,r3*r3-dy*dy));
+    ctx.beginPath();ctx.moveTo(mx(baseX),my(cornerY));ctx.lineTo(mx(xAtArc),my(cornerY));ctx.stroke();
+    ctx.beginPath();ctx.moveTo(mx(baseX),my(l-cornerY));ctx.lineTo(mx(xAtArc),my(l-cornerY));ctx.stroke();
+    const ang=Math.atan2(dy,Math.abs(xAtArc-bx));
+    if(s===0){ctx.beginPath();ctx.arc(mx(bx),my(cy),r3*scale,-ang,ang);ctx.stroke();}
+    else{ctx.beginPath();ctx.arc(mx(bx),my(cy),r3*scale,Math.PI-ang,Math.PI+ang);ctx.stroke();}
+  }
+}
+function drawDisc(m,color,label){
+  const x=mx(m[0]),y=my(m[1]),r=R_PLAYER*scale;
+  ctx.beginPath();ctx.arc(x,y,r,0,7);
+  ctx.fillStyle=color;ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.95)';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle='#fff';ctx.font='bold '+Math.round(r*0.95)+'px sans-serif';
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(label,x,y);
+}
+function drawBall(){
+  const x=mx(ball.m[0]),y=my(ball.m[1]),r=0.28*scale;
+  ctx.beginPath();ctx.arc(x,y,r,0,7);
+  ctx.fillStyle='#ef6c00';ctx.fill();ctx.strokeStyle='#bf360c';ctx.lineWidth=2;ctx.stroke();
+}
+function drawPaths(){
+  const all=[...offense,...defense];
+  all.forEach((p,i)=>{
+    if(p.hidden)return;
+    const pa=paths[i];if(!pa||pa.length<2)return;
+    const a=pa[0],b=pa[pa.length-1];
+    if(Math.hypot(b[0]-a[0],b[1]-a[1])<0.3)return;
+    ctx.beginPath();ctx.moveTo(mx(pa[0][0]),my(pa[0][1]));
+    for(let j=1;j<pa.length;j++)ctx.lineTo(mx(pa[j][0]),my(pa[j][1]));
+    ctx.strokeStyle=i<offense.length?'rgba(25,118,210,.55)':'rgba(211,47,47,.55)';
+    ctx.lineWidth=2.5;ctx.setLineDash([7,5]);ctx.stroke();ctx.setLineDash([]);
+  });
+  if(ballPath.length>=2){
+    ctx.beginPath();ctx.moveTo(mx(ballPath[0][0]),my(ballPath[0][1]));
+    for(let j=1;j<ballPath.length;j++)ctx.lineTo(mx(ballPath[j][0]),my(ballPath[j][1]));
+    ctx.strokeStyle='rgba(239,108,0,.6)';ctx.lineWidth=2.5;ctx.setLineDash([3,4]);ctx.stroke();ctx.setLineDash([]);
+  }
+}
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  if(courtMode==='half')drawHalf();else drawFull();
+  drawPaths();
+  defense.forEach(p=>{if(!p.hidden)drawDisc(p.m,'#d32f2f',p.label);});
+  offense.forEach(p=>{if(!p.hidden)drawDisc(p.m,'#1976d2',p.label);});
+  drawBall();
+}
+function defaultPositions(){
+  const conf=courtMode==='half'?HALF:FULL;
+  const bxm=-(BENCH_W/2)/scale;
+  offense=[];defense=[];
+  for(let i=0;i<5;i++)offense.push({label:''+(i+1),m:[bxm,((i+0.5)/10)*conf.lm]});
+  for(let i=0;i<5;i++)defense.push({label:''+(i+1),m:[bxm,((i+5.5)/10)*conf.lm]});
+  ball.m=[conf.wm/2,conf.lm*0.6];
+}
+function resetPositions(){
+  defaultPositions();
+  paths=[];ballPath=[];currentPlayName=null;
+  document.getElementById('btnPlay').disabled=true;
+  document.querySelectorAll('#myPlayButtons button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('status').textContent='左のベンチから選手をコートへドラッグして配置できます。下のプレーを押すと動きを再生できます。';
+}
+function setCourt(mode){
+  if(animating)stopAnim();
+  courtMode=mode;
+  document.getElementById('btnHalf').classList.toggle('active',mode==='half');
+  document.getElementById('btnFull').classList.toggle('active',mode==='full');
+  layout();resetPositions();draw();
+}
+
+/* --- デモ用プリセットプレー（コーチが保存した「マイプレー」の見本） --- */
+const DEF=[[7.5,8.6],[2.0,6.8],[13.0,6.8],[1.6,2.2],[13.4,2.2]];
+const PLAYS={
+  'P&R（ロール）':{desc:'5番がトップでボールスクリーン→ゴールへロール',use:[0,4],
+    frames:[
+      {o:[[7.5,8.6],DEF[1],DEF[2],DEF[3],[9.8,3.4]],ball:[7.5,8.4]},
+      {o:[[7.5,8.4],DEF[1],DEF[2],DEF[3],[8.8,7.2]],ball:[7.5,8.4]},
+      {o:[[9.4,6.6],DEF[1],DEF[2],DEF[3],[8.8,7.2]],ball:[9.4,6.6]},
+      {o:[[9.8,5.6],DEF[1],DEF[2],DEF[3],[8.2,3.4]],ball:[9.8,5.6]},
+      {o:[[9.8,5.6],DEF[1],DEF[2],DEF[3],[7.8,2.4]],ball:[7.9,2.6]}]},
+  'パス&ラン':{desc:'1→2へパス、1番がゴールへカット（ギブ&ゴー）',use:[0,1],
+    frames:[
+      {o:[[7.5,8.6],[2.4,6.8],DEF[2],DEF[3],DEF[4]],ball:[7.5,8.4]},
+      {o:[[7.5,8.4],[2.4,6.8],DEF[2],DEF[3],DEF[4]],ball:[2.8,6.9]},
+      {o:[[5.4,5.4],[2.4,6.8],DEF[2],DEF[3],DEF[4]],ball:[2.6,6.8]},
+      {o:[[6.6,2.8],[2.4,6.8],DEF[2],DEF[3],DEF[4]],ball:[2.6,6.8]},
+      {o:[[7.0,2.4],[2.4,6.8],DEF[2],DEF[3],DEF[4]],ball:[6.8,2.6]}]},
+  'バックドア':{desc:'3番がディナイされたら裏をかいてゴール下へ',use:[0,2],
+    frames:[
+      {o:[[7.5,8.6],DEF[1],[12.4,6.4],DEF[3],DEF[4]],ball:[7.5,8.4]},
+      {o:[[7.5,8.4],DEF[1],[13.2,7.0],DEF[3],DEF[4]],ball:[7.5,8.4]},
+      {o:[[7.5,8.4],DEF[1],[11.4,3.6],DEF[3],DEF[4]],ball:[7.5,8.4]},
+      {o:[[7.5,8.4],DEF[1],[9.6,2.2],DEF[3],DEF[4]],ball:[9.4,2.4]}]}
+};
+function interpKeyframes(keys){
+  const seg=22,out=[];
+  for(let k=0;k<keys.length-1;k++){
+    const a=keys[k],b=keys[k+1];
+    for(let t=0;t<seg;t++){
+      const r=t/seg;
+      const e=r<.5?2*r*r:1-Math.pow(-2*r+2,2)/2;
+      out.push([a[0]+(b[0]-a[0])*e,a[1]+(b[1]-a[1])*e]);
+    }
+  }
+  out.push([...keys[keys.length-1]]);
+  return out;
+}
+function buildMyPlays(){
+  const box=document.getElementById('myPlayButtons');
+  box.innerHTML=Object.keys(PLAYS).map(n=>
+    '<span class="myplay"><button onclick="loadPlay(\''+n+'\',this)">'+esc(n)+'</button></span>'
+  ).join('');
+}
+function loadPlay(name,btn){
+  if(animating)stopAnim();
+  if(courtMode!=='half')setCourt('half');
+  document.querySelectorAll('#myPlayButtons button').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  currentPlayName=name;
+  const play=PLAYS[name];
+  const f=play.frames;
+  const use=play.use||[0,1,2,3,4];
+  offense.forEach((p,i)=>p.hidden=!use.includes(i));
+  defense.forEach(p=>p.hidden=true);
+  paths=[];
+  offense.forEach((p,i)=>paths.push(p.hidden?[]:interpKeyframes(f.map(fr=>fr.o[i]))));
+  defense.forEach(()=>paths.push([]));
+  ballPath=interpKeyframes(f.map(fr=>fr.ball));
+  offense.forEach((p,i)=>p.m=[...f[0].o[i]]);
+  ball.m=[...f[0].ball];
+  document.getElementById('btnPlay').disabled=false;
+  document.getElementById('status').textContent='「'+name+'」: '+play.desc+'（▶ 再生 を押してみてください）';
+  draw();
+}
+function playAnim(){
+  if(animating)return;
+  const maxLen=Math.max(...paths.map(p=>p?p.length:0),ballPath.length);
+  if(maxLen<2)return;
+  animating=true;
+  document.getElementById('btnPlay').style.display='none';
+  document.getElementById('btnStop').style.display='';
+  const all=[...offense,...defense];
+  const start=all.map(p=>[...p.m]),sb=[...ball.m];
+  let f=0;
+  function step(){
+    if(!animating){restoreAnim(all,start,sb);return;}
+    const idx=Math.min(Math.floor(f),maxLen-1);
+    all.forEach((p,i)=>{const pa=paths[i];if(pa&&pa.length){p.m=[...pa[Math.min(idx,pa.length-1)]];}});
+    if(ballPath.length)ball.m=[...ballPath[Math.min(idx,ballPath.length-1)]];
+    draw();
+    f+=speed;
+    if(f>=maxLen){animating=false;endAnim();restoreAnim(all,start,sb);return;}
+    raf=requestAnimationFrame(step);
+  }
+  step();
+}
+function restoreAnim(all,start,sb){all.forEach((p,i)=>p.m=[...start[i]]);ball.m=[...sb];draw();}
+function endAnim(){document.getElementById('btnPlay').style.display='';document.getElementById('btnStop').style.display='none';}
+function stopAnim(){animating=false;if(raf)cancelAnimationFrame(raf);endAnim();}
+function demoDrawInfo(){
+  showModal('<h3>✏️ ルートを描く（製品版の機能）</h3>'+
+    '<div class="vl-note">製品版では、コート上を指でなぞるだけで「移動・ドリブル・パス」の動きを描いて保存できます。保存したプレーはチーム全員のスマホで再生できます。</div>'+
+    '<div class="demo-note">このデモでは、保存済みの見本プレー（マイプレー）の再生と、選手のドラッグ移動をお試しいただけます。</div>'+
+    '<div class="vl-mbtns"><button class="ok" onclick="closeModal()">OK</button></div>');
+}
+
+/* --- ドラッグ操作 --- */
+function canvasPos(e){
+  const r=canvas.getBoundingClientRect();
+  const sx=canvas.width/r.width, sy=canvas.height/r.height;
+  const t=(e.touches&&e.touches[0])||e;
+  return [(t.clientX-r.left)*sx,(t.clientY-r.top)*sy];
+}
+function hitTest(px,py){
+  const all=[...offense,...defense];
+  for(let i=all.length-1;i>=0;i--){
+    const p=all[i];if(p.hidden)continue;
+    if(Math.hypot(mx(p.m[0])-px,my(p.m[1])-py)<=R_PLAYER*scale+6)return{type:'p',i,obj:p};
+  }
+  if(Math.hypot(mx(ball.m[0])-px,my(ball.m[1])-py)<=0.28*scale+8)return{type:'ball',obj:ball};
+  return null;
+}
+function dragStart(e){
+  if(animating)return;
+  const[px,py]=canvasPos(e);
+  const hit=hitTest(px,py);
+  if(!hit)return;
+  e.preventDefault();
+  drag=hit.obj;
+  dragOff={x:px-mx(drag.m[0]),y:py-my(drag.m[1])};
+}
+function dragMove(e){
+  if(!drag)return;
+  e.preventDefault();
+  const[px,py]=canvasPos(e);
+  drag.m=px2m(px-dragOff.x,py-dragOff.y);
+  draw();
+}
+function dragEnd(){drag=null;}
+canvas.addEventListener('pointerdown',dragStart);
+canvas.addEventListener('pointermove',dragMove);
+window.addEventListener('pointerup',dragEnd);
+
+/* ---------- メインタブ ---------- */
+function setMainTab(tab){
+  document.querySelectorAll('.main-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+  document.querySelectorAll('.main-pane').forEach(p=>p.classList.toggle('active',p.id==='pane-'+tab));
+  if(tab==='board'){layout();draw();}
+}
+
+/* ---------- コーチモード（デモは素通し） ---------- */
+let bCoachPass=null;
+function openCoach(){
+  if(bCoachPass){
+    showModal('<h3>コーチモード</h3><p style="font-size:13px;line-height:1.6">現在ONです。</p>'+
+      '<div class="vl-mbtns"><button class="ng" onclick="closeModal()">そのまま</button>'+
+      '<button class="ok" onclick="coachOff()">OFFにする</button></div>');
+    return;
+  }
+  showModal('<h3>コーチモード</h3>'+
+    '<div class="demo-note">本来はコーチ用パスワードで保護されていますが、このデモでは体験用にそのままONにできます。</div>'+
+    '<p style="font-size:13px;line-height:1.7;color:var(--text-soft)">ONにすると、予定の追加・出欠の集計・スコア入力・メンバー編集など、顧問・コーチ向けの操作を試せます。</p>'+
+    '<div class="vl-mbtns"><button class="ng" onclick="closeModal()">キャンセル</button>'+
+    '<button class="ok" onclick="coachOn()">ONにして試す</button></div>');
+}
+function coachOn(){
+  bCoachPass='demo';
+  closeModal();updateCoachUI();
+  toast('コーチモードON（デモ用にパスワードなしで入れます）');
+}
+function coachOff(){bCoachPass=null;closeModal();updateCoachUI();toast('コーチモードOFF');}
+function updateCoachUI(){
+  document.getElementById('bCoachArea').innerHTML=bCoachPass
+    ?'<span class="coachbadge">コーチON</span> <button class="b-ghost" onclick="openCoach()">OFF</button>'
+    :'<button class="b-ghost" onclick="openCoach()">コーチ</button>';
+  document.getElementById('sAddBtn').style.display=bCoachPass?'':'none';
+  document.getElementById('bCoachState').textContent=bCoachPass?'コーチモードON':'';
+  sRenderList();bLoadList();renderScoreList();renderRoster();renderPmenu();
+}
+
+/* =========================================================
+   スケジュール・出欠
+========================================================= */
+function setBMode(mode){
+  document.getElementById('bModeSched').classList.toggle('active',mode==='schedule');
+  document.getElementById('bModeBbs').classList.toggle('active',mode==='bbs');
+  document.getElementById('bModePaneSched').style.display=mode==='schedule'?'':'none';
+  document.getElementById('bModePaneBbs').style.display=mode==='bbs'?'':'none';
+}
+function sRenderList(){
+  const area=document.getElementById('sListArea');
+  const list=currentSchedules.slice().sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+  if(!list.length){area.innerHTML='<div class="b-empty">今後の予定はまだ登録されていません。登録されると、ここに表示されます。</div>';return;}
+  let html='';
+  list.forEach(s=>{
+    const isTourney=s.type==='tourney';
+    const tagLabel=isTourney?'🏆 大会':'🏀 練習試合';
+    const tagClass=isTourney?'tourney':'match';
+    const act='<div class="b-cact" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line);flex-wrap:wrap">'+
+      '<button onclick="openAtt(\''+s.id+'\')">📋 出欠</button>'+
+      '<button onclick="gcalInfo()">📅 カレンダーに入れる</button>'+
+      (bCoachPass?'<button onclick="sOpenForm(\''+s.id+'\')">編集</button><button class="del" onclick="sDel(\''+s.id+'\')">削除</button>':'')+
+      '</div>';
+    html+='<div class="b-card"><div class="s-tag '+tagClass+'">'+tagLabel+'</div>'+schedCountBadge(s.date)+
+      '<div class="s-date">'+esc(formatSchedDate(s.date))+'</div>'+
+      '<div class="s-detail"><span class="sl">対戦相手：</span><span class="sv">'+esc(s.opponent)+'</span></div>'+
+      '<div class="s-detail"><span class="sl">会 場：</span><span class="sv">'+esc(s.venue)+'</span></div>'+
+      '<div class="s-detail"><span class="sl">集合時間：</span><span class="sv">'+esc(s.meet)+'</span></div>'+
+      '<div class="s-detail"><span class="sl">終了予定：</span><span class="sv">'+esc(s.end)+'</span></div>'+
+      (s.items?'<div class="s-route"><div class="s-route-title">🎒 持ち物</div>'+esc(s.items)+'</div>':'')+
+      (s.route?'<div class="s-route"><div class="s-route-title">🚃 経路・乗り換え</div>'+esc(s.route)+'</div>':'')+
+      act+'</div>';
+  });
+  area.innerHTML=html;
+}
+function gcalInfo(){
+  showModal('<h3>📅 カレンダーに入れる</h3>'+
+    '<div class="vl-note">製品版では、ワンタップでGoogleカレンダーに予定（集合時間・会場・持ち物・経路つき）を追加できます。ご家庭のカレンダーと同期でき、送迎の予定管理がラクになります。</div>'+
+    '<div class="demo-note">デモでは外部サービスを開かないため、動作の紹介のみとしています。</div>'+
+    '<div class="vl-mbtns"><button class="ok" onclick="closeModal()">OK</button></div>');
+}
+function sOpenForm(id){
+  if(!bCoachPass){toast('予定の追加・編集はコーチのみです（右上の「コーチ」からONにできます）');return;}
+  const isEdit=id!==undefined;
+  const d=isEdit?currentSchedules.find(s=>String(s.id)===String(id)):{type:'match',date:'',opponent:'',venue:'',meet:'',end:'',route:'',items:''};
+  showModal('<h3>'+(isEdit?'予定を編集':'予定を追加')+'</h3>'+
+  '<div class="demo-note">デモのため、保存してもこのブラウザ内だけに反映されます（リロードで元に戻ります）。</div>'+
+  '<div class="vl-field"><label>種類</label><select id="sf_type" style="width:100%"><option value="match"'+(d.type==='match'?' selected':'')+'>練習試合</option><option value="tourney"'+(d.type==='tourney'?' selected':'')+'>大会</option></select></div>'+
+  '<div class="vl-field"><label>日付</label><input type="date" id="sf_date" value="'+escAttr(d.date)+'"></div>'+
+  '<div class="row" style="gap:10px"><div class="vl-field" style="flex:1"><label>対戦相手</label><input type="text" id="sf_opp" value="'+escAttr(d.opponent)+'"></div><div class="vl-field" style="flex:1"><label>会場</label><input type="text" id="sf_venue" value="'+escAttr(d.venue)+'"></div></div>'+
+  '<div class="row" style="gap:10px"><div class="vl-field" style="flex:1"><label>集合時間</label><input type="text" id="sf_meet" value="'+escAttr(d.meet)+'"></div><div class="vl-field" style="flex:1"><label>終了予定</label><input type="text" id="sf_end" value="'+escAttr(d.end)+'"></div></div>'+
+  '<div class="vl-field"><label>持ち物（例：お弁当・水筒・ゼッケン）</label><textarea id="sf_items" style="min-height:56px">'+esc(d.items||'')+'</textarea></div>'+
+  '<div class="vl-field"><label>経路・乗り換えメモ（改行OK）</label><textarea id="sf_route" style="min-height:90px">'+esc(d.route)+'</textarea></div>'+
+  '<div class="vl-mbtns"><button class="ng" onclick="closeModal()">キャンセル</button><button class="ok" onclick="sSaveForm(\''+(isEdit?id:'')+'\')">保存</button></div>');
+}
+function sSaveForm(id){
+  const row={
+    type:document.getElementById('sf_type').value,
+    date:document.getElementById('sf_date').value,
+    opponent:document.getElementById('sf_opp').value.trim(),
+    venue:document.getElementById('sf_venue').value.trim(),
+    meet:document.getElementById('sf_meet').value.trim(),
+    end:document.getElementById('sf_end').value.trim(),
+    items:document.getElementById('sf_items').value,
+    route:document.getElementById('sf_route').value
+  };
+  if(!row.date||!row.opponent){toast('日付と対戦相手を入力してください');return;}
+  if(id){
+    const i=currentSchedules.findIndex(s=>String(s.id)===String(id));
+    if(i>=0)currentSchedules[i]={...currentSchedules[i],...row};
+  }else{
+    currentSchedules.push({id:'s_'+Date.now(),...row});
+  }
+  closeModal();toast('予定を保存しました（デモのため、リロードで元に戻ります）');sRenderList();
+}
+function sDel(id){
+  vlConfirm('予定の削除','この予定を削除しますか？（デモのため、リロードで元に戻ります）',()=>{
+    currentSchedules=currentSchedules.filter(s=>String(s.id)!==String(id));
+    closeModal();toast('削除しました');sRenderList();
+  });
+}
+
+/* --- 出欠 --- */
+let attCurGame=null,attCurRec=null;
+function attTargetPlayers(){
+  const tid=(attCurRec&&attCurRec.target)||'A';
+  return roster.filter(p=>p.team===tid);
+}
+function openAtt(gameId){
+  attCurGame=String(gameId);
+  attCurRec=attendance[attCurGame]||{target:'A',marks:{}};
+  if(!attCurRec.marks)attCurRec.marks={};
+  attendance[attCurGame]=attCurRec;
+  renderAttModal();
+}
+function renderAttModal(){
+  const g=currentSchedules.find(s=>String(s.id)===attCurGame);
+  const coach=!!bCoachPass;
+  const players=attTargetPlayers();
+  let html='<h3>出欠　'+esc(g?formatSchedDate(g.date):'')+'</h3>';
+  html+='<div class="demo-note">名前の横の「出席／欠席」をタップしてみてください。実際のアプリでは選手・保護者が自分で答え、コーチは集計を見るだけです。</div>';
+  html+='<div class="b-field"><label>対象チーム'+(coach?'':'（変更はコーチのみです）')+'</label><div class="b-vseg">'+
+    teams.map(t=>'<button class="'+(attCurRec.target===t.id?'active':'')+'" onclick="attSetTarget(\''+t.id+'\')">'+esc(t.name)+'</button>').join('')+
+    '</div></div>';
+  if(!players.length)html+='<div class="b-empty">対象選手がいません。「メンバー」でチーム分けをしてください。</div>';
+  players.forEach(p=>{
+    const st=attCurRec.marks[p.id]||'';
+    html+='<div class="vl-row"><span class="vl-main"><span class="lab">'+esc(p.name)+(p.num?' <span class="tag">#'+esc(p.num)+'</span>':'')+'</span></span><span class="vl-act">'+
+      '<button class="'+(st==='present'?'kf-done':'')+'" style="width:auto;padding:0 12px" onclick="attMark(\''+p.id+'\',\'present\')">出席</button>'+
+      '<button class="'+(st==='absent'?'rec':'')+'" style="width:auto;padding:0 12px" onclick="attMark(\''+p.id+'\',\'absent\')">欠席</button></span></div>';
+  });
+  const present=players.filter(p=>attCurRec.marks[p.id]==='present').length;
+  const absent=players.filter(p=>attCurRec.marks[p.id]==='absent').length;
+  html+='<div class="b-hint">出席 '+present+'／欠席 '+absent+'／未回答 '+(players.length-present-absent)+'（対象'+players.length+'名）</div>';
+  if(coach){
+    const noAns=players.filter(p=>!attCurRec.marks[p.id]);
+    if(noAns.length)html+='<div class="b-hint" style="color:var(--amber-fg)">⚠ 未回答：'+noAns.map(p=>esc(p.name)).join('、')+'</div>';
+    else if(players.length)html+='<div class="b-hint" style="color:var(--ok-fg)">✓ 全員回答済みです</div>';
+  }
+  html+='<div class="vl-mbtns"><button class="ok" onclick="closeModal()">閉じる</button></div>';
+  showModal(html);
+}
+function attSetTarget(t){
+  if(!bCoachPass){toast('対象の変更はコーチのみです');return;}
+  attCurRec.target=t;renderAttModal();
+}
+function attMark(pid,st){
+  const next=attCurRec.marks[pid]===st?'':st;
+  if(next==='')delete attCurRec.marks[pid];else attCurRec.marks[pid]=next;
+  renderAttModal();
+}
+
+/* =========================================================
+   質問ボード
+========================================================= */
+let bVisMode='public';
+function setBTab(t){
+  document.getElementById('bTabList').classList.toggle('active',t==='list');
+  document.getElementById('bTabPost').classList.toggle('active',t==='post');
+  document.getElementById('bTabTicket').classList.toggle('active',t==='ticket');
+  document.getElementById('bPaneList').style.display=t==='list'?'':'none';
+  document.getElementById('bPanePost').style.display=t==='post'?'':'none';
+  document.getElementById('bPaneTicket').style.display=t==='ticket'?'':'none';
+}
+function setBVis(v){
+  bVisMode=v;
+  document.querySelectorAll('#bVisSeg button').forEach(b=>b.classList.toggle('active',b.dataset.vis===v));
+  if(v==='private'){
+    document.getElementById('bQAnon').checked=false;
+    document.getElementById('bNameField').style.display='';
+    document.getElementById('bVisHint').textContent='「コーチにだけ」＝掲示板には出ません。受付番号で回答を確認できます。(※匿名では送れません)';
+  }else{
+    document.getElementById('bVisHint').textContent='「みんなに見せる」＝掲示板に質問と回答が表示されます。';
+  }
+}
+document.getElementById('bQAnon').addEventListener('change',function(){
+  if(this.checked&&bVisMode==='private'){
+    toast('「コーチにだけ」の質問は匿名では送れません。名前を入力してください');
+    this.checked=false;return;
+  }
+  document.getElementById('bNameField').style.display=this.checked?'none':'';
+});
+function bLoadList(){
+  const area=document.getElementById('bListArea');
+  if(!questions.length){area.innerHTML='<div class="b-empty">まだ質問はありません。「質問する」タブから気軽にどうぞ。</div>';return;}
+  area.innerHTML=questions.slice().reverse().map(it=>bCardHTML(it,!!bCoachPass)).join('');
+}
+function bCardHTML(it,coach){
+  const who=it.anon?'<span class="who anon">匿名</span>':'<span class="who">'+esc(it.name||'名前なし')+'</span>';
+  const pvt=it.vis==='private'?'<span class="b-pvt">コーチにだけ</span>':'';
+  const time=it.time?'<span class="btime">'+esc(formatSchedDate(it.time))+'</span>':'';
+  const ans=it.answered
+    ?'<div class="b-ans"><div class="lab">コーチの回答</div><div class="body">'+esc(it.answer)+'</div></div>'
+    :'<div class="b-waiting">回答待ち</div>';
+  const cact=coach?'<div class="b-cact"><button onclick="bOpenAnswer(\''+it.id+'\')">'+(it.answered?'回答を直す':'回答する')+'</button><button class="del" onclick="bDelQ(\''+it.id+'\')">削除</button></div>':'';
+  return '<div class="b-card">'+time+who+pvt+'<div class="qt">'+esc(it.text)+'</div>'+ans+cact+'</div>';
+}
+function bSubmit(){
+  const text=document.getElementById('bQText').value.trim();
+  if(!text){toast('質問を入力してください');return;}
+  const anon=document.getElementById('bQAnon').checked;
+  const name=document.getElementById('bQName').value.trim();
+  if(bVisMode==='private'){
+    if(anon){toast('「コーチにだけ」の質問は匿名では送れません。名前を入力してください');return;}
+    if(!name){toast('名前を入力してください');return;}
+  }
+  document.getElementById('bQText').value='';
+  if(bVisMode==='private'){
+    const ticket='D'+Math.random().toString(36).slice(2,7).toUpperCase();
+    showModal('<h3>送信しました</h3>'+
+      '<p style="font-size:13px;line-height:1.6">受付番号を控えてください。この番号で、あとから回答を確認できます。</p>'+
+      '<div style="font-size:26px;font-weight:800;letter-spacing:.1em;text-align:center;margin:14px 0;color:var(--accent)">'+esc(ticket)+'</div>'+
+      '<div class="demo-note">デモのため、この質問はコーチには届きません。回答つきの見本は、受付番号「A7K2Q9」でご覧いただけます。</div>'+
+      '<div class="vl-mbtns"><button class="ok" onclick="closeModal()">OK</button></div>');
+  }else{
+    questions.push({id:'q_'+Date.now(),name:anon?'':name,anon,vis:'public',time:relDate(0),text,answered:false,answer:''});
+    toast('質問を送りました（デモのため、リロードで元に戻ります）');
+    setBTab('list');bLoadList();
+  }
+}
+function bCheckTicket(){
+  const t=document.getElementById('bTCode').value.trim().toUpperCase();
+  const box=document.getElementById('bTicketResult');
+  if(!t){box.innerHTML='';return;}
+  if(t!==DEMO_TICKET.code){box.innerHTML='<div class="b-empty">その受付番号は見つかりませんでした。（デモ用の見本は A7K2Q9 です）</div>';return;}
+  box.innerHTML='<div class="b-card"><div class="qt">'+esc(DEMO_TICKET.text)+'</div>'+
+    '<div class="b-ans"><div class="lab">コーチの回答</div><div class="body">'+esc(DEMO_TICKET.answer)+'</div></div></div>'+
+    '<div class="b-hint">まわりに見られずに、コーチとだけやり取りできます。悩みを抱え込ませない仕組みです。</div>';
+}
+function bOpenAnswer(id){
+  showModal('<h3>回答する</h3><div class="vl-field"><label>回答</label><textarea id="bAText" maxlength="800" style="min-height:110px"></textarea></div>'+
+    '<div class="vl-mbtns"><button class="ng" onclick="closeModal()">キャンセル</button><button class="ok" onclick="bSendAnswer(\''+id+'\')">送信</button></div>');
+  setTimeout(()=>{const el=document.getElementById('bAText');if(el)el.focus();},50);
+}
+function bSendAnswer(id){
+  const text=document.getElementById('bAText').value.trim();if(!text)return;
+  const it=questions.find(q=>q.id===id);
+  if(it){it.answered=true;it.answer=text;}
+  closeModal();toast('回答しました');bLoadList();
+}
+function bDelQ(id){
+  vlConfirm('質問を削除','この質問を削除しますか？（デモのため、リロードで元に戻ります）',()=>{
+    questions=questions.filter(q=>q.id!==id);
+    closeModal();toast('削除しました');bLoadList();
+  });
+}
+
+/* =========================================================
+   スコア
+========================================================= */
+let scCur=null;
+function scEntryTotal(e){let t=0;(e.rows||[]).forEach(r=>t+=(parseInt(r.pts,10)||0));return t;}
+function teamLabel(id){const t=teams.find(x=>x.id===id);return t?t.name:(id||'');}
+function renderScoreList(){
+  const area=document.getElementById('scoreArea');
+  const coach=!!bCoachPass;
+  let html='';
+  if(coach)html+='<div class="vl-addrow" style="margin-top:0;margin-bottom:12px"><button class="vl-addbtn" onclick="scAddGame()">＋ 試合スコアを追加</button></div>';
+  if(!scores.length){html+='<div class="b-empty">まだスコアがありません。'+(coach?'「＋ 試合スコアを追加」から記録できます。':'コーチが記録すると表示されます。')+'</div>';area.innerHTML=html;return;}
+  const list=scores.slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  list.forEach(e=>{
+    const total=scEntryTotal(e),opp=parseInt(e.opp,10)||0;
+    const mark=total>opp?'〇 勝':(total<opp?'● 負':'△ 分');
+    html+='<div class="b-card"><div class="s-tag match">'+mark+'　'+esc(teamLabel(e.target))+'</div>'+
+      '<div class="s-date">'+esc(formatSchedDate(e.date))+'　vs '+esc(e.opponent||'')+'</div>'+
+      '<div class="s-date" style="font-size:22px">自 '+total+' － '+opp+' 相手</div>'+
+      '<div class="b-cact"><button onclick="openScoreEntry(\''+e.id+'\')">'+(coach?'得点を入力／見る':'詳細を見る')+'</button>'+
+      (coach?'<button class="del" onclick="scDel(\''+e.id+'\')">削除</button>':'')+'</div></div>';
+  });
+  area.innerHTML=html;
+}
+function scAddGame(){
+  showModal('<h3>試合スコアを追加</h3>'+
+    '<div class="vl-field"><label>日付</label><input type="date" id="scfDate" value="'+relDate(0)+'"></div>'+
+    '<div class="vl-field"><label>対戦相手</label><input type="text" id="scfOpp" placeholder="例：〇〇中学校"></div>'+
+    '<div class="vl-field"><label>対象チーム</label><select id="scfTarget">'+teams.map(t=>'<option value="'+escAttr(t.id)+'">'+esc(t.name)+'</option>').join('')+'</select></div>'+
+    '<div class="vl-mbtns"><button class="ng" onclick="closeModal()">キャンセル</button><button class="ok" onclick="scDoAdd()">保存</button></div>');
+}
+function scDoAdd(){
+  const date=(document.getElementById('scfDate').value||'').trim();
+  const oppName=(document.getElementById('scfOpp').value||'').trim();
+  const target=document.getElementById('scfTarget').value;
+  const players=roster.filter(p=>p.team===target);
+  const rows=players.slice().sort((a,b)=>(parseInt(a.num,10)||999)-(parseInt(b.num,10)||999)).map(p=>({id:p.id,name:p.name,num:p.num||'',pts:0}));
+  const entry={id:'sc_'+Date.now(),date,opponent:oppName,target,rows,opp:''};
+  scores.push(entry);closeModal();renderScoreList();openScoreEntry(entry.id);
+}
+function scDel(id){
+  vlConfirm('スコアを削除','このスコアを削除しますか？（デモのため、リロードで元に戻ります）',()=>{
+    scores=scores.filter(e=>e.id!==id);closeModal();renderScoreList();
+  });
+}
+function scLiveTotal(){if(!scCur)return 0;let t=0;(scCur.rows||[]).forEach(r=>t+=(parseInt(r.pts,10)||0));return t;}
+function scUpdateTotal(){const el=document.getElementById('scTotal');if(el&&scCur)el.textContent='自 '+scLiveTotal()+' － '+(parseInt(scCur.opp,10)||0)+' 相手';}
+function openScoreEntry(id){
+  scCur=scores.find(e=>e.id===id);if(!scCur)return;
+  const coach=!!bCoachPass;
+  let html='<h3>スコア　'+esc(formatSchedDate(scCur.date))+'　vs '+esc(scCur.opponent||'')+'</h3>';
+  html+='<div class="b-hint">自チーム選手の得点（背番号順）'+(coach?'。数字を書き換えてみてください':'／入力はコーチのみ')+'</div>';
+  if(!scCur.rows||!scCur.rows.length)html+='<div class="b-empty">対象選手がいません。「メンバー」でチーム分けをしてから追加してください。</div>';
+  (scCur.rows||[]).forEach((r,i)=>{
+    html+='<div class="vl-row"><span class="vl-main"><span class="ic">'+esc(r.num||'?')+'</span><span class="lab">'+esc(r.name)+'</span></span><span class="vl-act">'+
+      (coach?'<input type="text" inputmode="numeric" style="width:64px;text-align:center;padding:7px" value="'+esc(String(r.pts||''))+'" onchange="scSetRow('+i+',this.value)">':'<span class="lab" style="font-weight:700">'+esc(String(r.pts||0))+'</span>')+'</span></div>';
+  });
+  html+='<div class="b-field" style="margin-top:10px"><label>相手チーム得点（任意）</label>'+
+    (coach?'<input type="text" inputmode="numeric" value="'+esc(String(scCur.opp||''))+'" onchange="scSetOpp(this.value)">':'<div class="lab" style="font-weight:700">'+esc(String(scCur.opp||0))+'</div>')+'</div>';
+  html+='<div class="s-date" style="text-align:center;margin-top:10px" id="scTotal">自 '+scLiveTotal()+' － '+(parseInt(scCur.opp,10)||0)+' 相手</div>';
+  html+='<div class="vl-mbtns"><button class="ok" onclick="closeModal();renderScoreList()">閉じる</button></div>';
+  showModal(html);
+}
+function scSetRow(i,v){if(!bCoachPass||!scCur)return;scCur.rows[i].pts=parseInt(v,10)||0;scUpdateTotal();}
+function scSetOpp(v){if(!bCoachPass||!scCur)return;scCur.opp=parseInt(v,10)||0;scUpdateTotal();}
+
+/* =========================================================
+   メンバー名簿
+========================================================= */
+function renderRoster(){
+  const area=document.getElementById('rosterArea');
+  const coach=!!bCoachPass;
+  const groups=[...teams.map(t=>[t.id,t.name]),['','未分類']];
+  let html='';
+  groups.forEach(g=>{
+    const key=g[0],label=g[1];
+    const list=roster.filter(p=>(p.team||'')===key);
+    if(key===''&&!list.length)return;
+    html+='<fieldset class="fs"><legend>'+esc(label)+'（'+list.length+'名）</legend>';
+    if(!list.length)html+='<span class="label">なし</span>';
+    list.forEach(p=>{
+      const idx=roster.indexOf(p);
+      html+='<div class="vl-row"><span class="vl-main"><span class="ic">'+esc(p.num||'?')+'</span><span class="lab">'+esc(p.name)+(p.grade?' <span class="tag">'+esc(String(p.grade))+'年</span>':'')+'</span></span>';
+      if(coach){
+        html+='<span class="vl-act">';
+        teams.forEach(t=>{if(key!==t.id)html+='<button title="'+esc(t.name)+'へ移動" onclick="rMove('+idx+',\''+t.id+'\')">'+esc(t.name.charAt(0))+'</button>';});
+        html+='<button title="編集" onclick="rEdit('+idx+')">✎</button>';
+        html+='<button class="del" title="削除" onclick="rDel('+idx+')">✕</button>';
+        html+='</span>';
+      }
+      html+='</div>';
+    });
+    html+='</fieldset>';
+  });
+  if(coach)html+='<div class="vl-addrow"><button class="vl-addbtn" onclick="rAdd()">＋ 選手を追加</button></div>';
+  else html+='<div class="b-hint">チーム分け・背番号の編集は、チームタブで「コーチ」をONにすると試せます。</div>';
+  area.innerHTML=html;
+}
+function rMove(idx,team){roster[idx].team=team;renderRoster();toast('移動しました');}
+function rEdit(idx){
+  const p=roster[idx];
+  vlFormModal('選手を編集',[
+    {key:'name',label:'名前（フルネーム）',value:p.name},
+    {key:'num',label:'背番号',value:p.num||''},
+    {key:'grade',label:'学年（任意）',value:p.grade?String(p.grade):''}
+  ],r=>{if(r.name.trim())p.name=r.name.trim();p.num=(r.num||'').trim();p.grade=parseInt(r.grade,10)||'';closeModal();renderRoster();});
+}
+function rAdd(){
+  vlFormModal('選手を追加',[
+    {key:'name',label:'名前（フルネーム）',value:''},
+    {key:'num',label:'背番号',value:''},
+    {key:'grade',label:'学年（任意）',value:''}
+  ],r=>{if(!r.name.trim())return;roster.push({id:'r_'+Date.now(),name:r.name.trim(),num:(r.num||'').trim(),grade:parseInt(r.grade,10)||'',team:''});closeModal();renderRoster();toast('追加しました（デモのため、リロードで元に戻ります）');});
+}
+function rDel(idx){
+  const p=roster[idx];
+  vlConfirm('選手を削除','「'+p.name+'」を削除しますか？（デモのため、リロードで元に戻ります）',()=>{
+    roster.splice(idx,1);closeModal();renderRoster();
+  });
+}
+
+/* =========================================================
+   動画ライブラリ
+========================================================= */
+let vidTab='all',vidPlayerId=null;
+function setVidTab(cat){
+  vidTab=cat;
+  document.querySelectorAll('.vid-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.vcat===cat));
+  renderVlib();
+}
+function playerVidData(pid){
+  if(!vlib.byPlayer[pid])vlib.byPlayer[pid]={style:'',note:'',videos:[]};
+  return vlib.byPlayer[pid];
+}
+function getVideos(loc){
+  if(loc==='all')return vlib.all.videos;
+  if(loc.indexOf('p:')===0)return playerVidData(loc.slice(2)).videos;
+  return [];
+}
+function vrowHTML(loc,idx){
+  const v=getVideos(loc)[idx];
+  const main=v.demo
+    ?'<span class="vl-main" style="cursor:pointer" onclick="openVideo(\''+loc+'\','+idx+')"><span class="ic">▶</span><span class="lab">'+esc(v.label)+'</span></span>'
+    :'<span class="vl-main"><span class="ic">＋</span><span class="lab">'+esc(v.label)+'<span class="tag">URL未設定</span></span></span>';
+  return '<div class="vl-row '+(v.demo?'has':'empty')+'">'+main+
+    '<span class="vl-act">'+
+    '<button title="名称とURLを編集" onclick="editVid(\''+loc+'\','+idx+')">✎</button>'+
+    '<button class="del" title="削除" onclick="delVid(\''+loc+'\','+idx+')">✕</button>'+
+    '</span></div>';
+}
+function renderVlib(){
+  const area=document.getElementById('vidArea');
+  if(vidTab==='all'){
+    area.innerHTML='<div>'+
+      (vlib.all.note?'<div class="vl-note">'+esc(vlib.all.note)+'</div>':'')+
+      vlib.all.videos.map((v,idx)=>vrowHTML('all',idx)).join('')+
+      '<div class="vl-addrow"><button class="vl-addbtn" onclick="addVid(\'all\')">＋ 動画を追加</button></div></div>';
+    return;
+  }
+  if(!roster.length){area.innerHTML='<div class="vl-note">「👥 メンバー」タブで選手を登録すると、ここに選手ごとの動画を追加できます。</div>';return;}
+  if(!roster.find(p=>p.id===vidPlayerId))vidPlayerId=roster[0].id;
+  let tabs='<div class="vl-ptabs">';
+  roster.forEach(p=>{
+    tabs+='<button class="'+(p.id===vidPlayerId?'active':'')+'" onclick="setVidPlayer(\''+p.id+'\')">'+esc(p.name)+(p.num?' <span class="tag">#'+esc(p.num)+'</span>':'')+'</button>';
+  });
+  tabs+='</div>';
+  const p=roster.find(x=>x.id===vidPlayerId);
+  const pd=playerVidData(p.id);
+  const body='<div>'+
+    '<div class="vl-head"><span class="vl-name">'+esc(p.name)+'</span>'+(pd.style?'<span class="vl-style">目標：'+esc(pd.style)+'</span>':'')+'</div>'+
+    (pd.note?'<div class="vl-note">'+esc(pd.note)+'</div>':'')+
+    (pd.videos.length?pd.videos.map((v,idx)=>vrowHTML('p:'+p.id,idx)).join(''):'<div class="b-empty">この選手の動画はまだありません。</div>')+
+    '<div class="vl-addrow"><button class="vl-addbtn" onclick="addVid(\'p:'+p.id+'\')">＋ 動画を追加</button><button class="vl-addbtn" onclick="editPlayerVid(\''+p.id+'\')">✎ 目標・メモを編集</button></div></div>';
+  area.innerHTML=tabs+body;
+}
+function setVidPlayer(id){vidPlayerId=id;renderVlib();}
+function openVideo(loc,idx){
+  const v=getVideos(loc)[idx];if(!v)return;
+  showModal('<h3 style="margin-bottom:12px">'+esc(v.label)+'</h3>'+
+    '<div style="position:relative;width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,#1a2b4a,#22355a);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:#fff">'+
+    '<div style="width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:22px">▶</div>'+
+    '<div style="font-size:12px;opacity:.8">デモのため、実際の動画は再生されません</div></div>'+
+    '<div class="demo-note" style="margin-top:14px">製品版では、YouTubeのURLを貼るだけでこの画面のまま再生できます。限定公開のURLを使えば、チームの中だけで動画を共有できます。</div>'+
+    '<div class="vl-mbtns"><button class="ok" onclick="closeModal()">閉じる</button></div>');
+}
+function addVid(loc){
+  vlFormModal('動画を追加',[
+    {key:'label',label:'名称',value:'',ph:'例：10月 練習試合（前半）'},
+    {key:'url',label:'動画URL（YouTubeなど）',value:'',ph:'https://...'}
+  ],r=>{
+    if(!r.label.trim()){toast('名称を入力してください');return;}
+    getVideos(loc).push({label:r.label.trim(),demo:!!r.url.trim()});
+    closeModal();renderVlib();toast('追加しました（デモのため、リロードで元に戻ります）');
+  });
+}
+function editVid(loc,idx){
+  const v=getVideos(loc)[idx];
+  vlFormModal('動画を編集',[
+    {key:'label',label:'名称',value:v.label},
+    {key:'url',label:'動画URL（YouTubeなど）',value:v.demo?'（デモのためURLは表示していません）':'',ph:'https://...'}
+  ],r=>{v.label=r.label.trim()||v.label;closeModal();renderVlib();});
+}
+function delVid(loc,idx){
+  vlConfirm('動画を削除','この動画をライブラリから削除しますか？（デモのため、リロードで元に戻ります）',()=>{
+    getVideos(loc).splice(idx,1);closeModal();renderVlib();
+  });
+}
+function editPlayerVid(pid){
+  const pd=playerVidData(pid);
+  vlFormModal('目標・メモを編集',[
+    {key:'style',label:'目標（例：ドライブからの合わせ）',value:pd.style},
+    {key:'note',label:'メモ',value:pd.note,type:'textarea'}
+  ],r=>{pd.style=r.style.trim();pd.note=r.note;closeModal();renderVlib();});
+}
+
+/* =========================================================
+   練習メニュー
+========================================================= */
+let pmenuTagFilter='all',pmenuSearchTerm='';
+function setPmenuTag(tag){pmenuTagFilter=tag;renderPmenu();}
+function onPmenuSearch(v){pmenuSearchTerm=v;renderPmenu();}
+function pmenuMatches(it){
+  if(pmenuTagFilter!=='all'&&(it.tag||'その他')!==pmenuTagFilter)return false;
+  const q=(pmenuSearchTerm||'').trim().toLowerCase();
+  if(!q)return true;
+  return (it.name+' '+(it.note||'')+' '+(it.tag||'')).toLowerCase().includes(q);
+}
+function renderPmenu(){
+  const tabsEl=document.getElementById('pmenuTagTabs');
+  tabsEl.innerHTML=['all',...PMENU_TAGS].map(t=>
+    '<button class="'+(pmenuTagFilter===t?'active':'')+'" onclick="setPmenuTag(\''+t+'\')">'+esc(t==='all'?'全て':t)+'</button>'
+  ).join('');
+  const area=document.getElementById('pmenuArea');
+  const coach=!!bCoachPass;
+  const filtered=pmenu.map((it,idx)=>({it,idx})).filter(o=>pmenuMatches(o.it));
+  if(!pmenu.length){
+    area.innerHTML='<div class="b-empty">まだ練習メニューがありません。'+(coach?'下のボタンから追加できます。':'コーチが追加するとここに表示されます。')+'</div>';
+  }else if(!filtered.length){
+    area.innerHTML='<div class="b-empty">該当する練習メニューが見つかりません。</div>';
+  }else{
+    area.innerHTML=filtered.map(({it,idx})=>{
+      return '<div class="b-card">'+
+        '<div class="vl-head" style="margin-bottom:4px">'+
+        '<span class="qt" style="font-weight:700;font-size:15px;margin:0">'+esc(it.name)+'</span>'+
+        '<span class="vl-style">'+esc(it.tag||'その他')+'</span></div>'+
+        (it.note?'<div class="vl-note">'+esc(it.note)+'</div>':'')+
+        '<div class="b-cact" style="flex-wrap:wrap">'+
+        (it.play?'<button onclick="pmPlayMove('+idx+')">▶ 動きを見る（'+esc(it.play)+'）</button>':'')+
+        (it.demo?'<button onclick="openVideo(\'all\',0)">▶ 動画を見る</button>':'')+
+        (coach?'<button onclick="editPmenuItem('+idx+')">✎ 編集</button><button class="del" onclick="delPmenuItem('+idx+')">✕ 削除</button>':'')+
+        '</div></div>';
+    }).join('');
+  }
+  document.getElementById('pmenuAddRow').style.display=coach?'':'none';
+}
+function pmPlayMove(idx){
+  const it=pmenu[idx];if(!it||!it.play||!PLAYS[it.play])return;
+  setMainTab('board');
+  const btns=document.querySelectorAll('#myPlayButtons button');
+  let target=null;
+  btns.forEach(b=>{if(b.textContent===it.play)target=b;});
+  loadPlay(it.play,target);
+  toast('作戦盤に移動しました。「▶ 再生」で動きを確認できます');
+}
+function addPmenuItem(){
+  if(!bCoachPass){toast('練習メニューの編集はコーチのみです');return;}
+  vlFormModal('練習メニューを追加',[
+    {key:'name',label:'メニュー名',value:'',ph:'例：1対1のドリブル突破'},
+    {key:'note',label:'やり方・説明',value:'',type:'textarea'}
+  ],r=>{
+    if(!r.name.trim()){toast('メニュー名を入力してください');return;}
+    pmenu.push({name:r.name.trim(),tag:'その他',note:r.note,play:'',demo:false});
+    closeModal();renderPmenu();toast('追加しました（デモのため、リロードで元に戻ります）');
+  });
+}
+function editPmenuItem(idx){
+  if(!bCoachPass){toast('練習メニューの編集はコーチのみです');return;}
+  const it=pmenu[idx];if(!it)return;
+  vlFormModal('練習メニューを編集',[
+    {key:'name',label:'メニュー名',value:it.name},
+    {key:'note',label:'やり方・説明',value:it.note,type:'textarea'}
+  ],r=>{it.name=r.name.trim()||it.name;it.note=r.note;closeModal();renderPmenu();});
+}
+function delPmenuItem(idx){
+  if(!bCoachPass){toast('練習メニューの編集はコーチのみです');return;}
+  const it=pmenu[idx];if(!it)return;
+  vlConfirm('練習メニューを削除','「'+it.name+'」を削除しますか？（デモのため、リロードで元に戻ります）',()=>{
+    pmenu.splice(idx,1);closeModal();renderPmenu();
+  });
+}
+
+/* =========================================================
+   製品ツアー（スポットライト式ステップガイド）
+========================================================= */
+const TOUR_STEPS=[
+  {tab:null,sel:'#mainTabs',
+   title:'ようこそ。これが「作戦盤 TEAM BOARD」です',
+   text:'予定・出欠・作戦・動画・質問箱を、チーム全員がひとつの画面で共有できます。ここは架空チーム「青葉中バスケ部」のデモ。実際の画面そのままです。'},
+  {tab:'bbs',mode:'schedule',sel:'#sListArea .b-card',
+   title:'予定は、いつでも同じ場所に',
+   text:'集合時間・会場・持ち物・乗り換えまで1枚のカードに。「集合何時だっけ？」とLINEを遡る時間がなくなります。保護者も同じ画面を見られるので、送迎も迷いません。'},
+  {tab:'bbs',mode:'schedule',sel:'#sListArea .b-card .b-cact',
+   title:'出欠は、タップひとつで',
+   text:'選手や保護者が「出席／欠席」を自分でタップ。コーチは集計と未回答だけ確認すればOKです。ツアーのあと「📋 出欠」を押して、実際に触ってみてください。'},
+  {tab:'score',sel:'#scoreArea',
+   title:'がんばりが、記録として残る',
+   text:'試合ごとの得点を選手別に記録。子どもたちの成長がチームの財産として積み上がり、保護者はわが子の活躍をいつでも見返せます。'},
+  {tab:'video',sel:'#vidArea',
+   title:'動画で、ことばが伝わる',
+   text:'試合の録画やお手本動画をチームで共有。「選手ごと」タブでは、一人ひとりの課題に合わせた動画と目標を渡せます。口頭では伝わりにくいことも、映像なら一度で伝わります。'},
+  {tab:'bbs',mode:'bbs',sel:'#bListArea',
+   title:'質問箱で、聞きそびれをなくす',
+   text:'練習中に聞けなかったことを、あとから気軽に質問できます。「コーチにだけ」を選べば、まわりに見られずに相談も可能。匿名の質問にも答えられます。'},
+  {tab:null,sel:null,
+   title:'あなたのチームでも、今日から',
+   text:'ここまでの機能を、合言葉ひとつでチーム全員と共有できます。アプリのインストールは不要。まずはこのデモを自由に触って、それから無料体験でご自身のチームでもお試しください。'}
+];
+let tourIdx=-1;
+function tourStart(){tourIdx=0;closeModal();tourShow();}
+function tourEnd(silent){
+  tourIdx=-1;
+  document.getElementById('tourOverlay').classList.remove('show');
+  if(!silent)toast('ツアーはいつでも上の「▶ 使い方ツアーを見る」から再開できます');
+}
+function tourNext(){if(tourIdx<TOUR_STEPS.length-1){tourIdx++;tourShow();}else{tourEnd(true);}}
+function tourBack(){if(tourIdx>0){tourIdx--;tourShow();}}
+function tourShow(){
+  const st=TOUR_STEPS[tourIdx];
+  if(st.tab)setMainTab(st.tab);
+  if(st.mode)setBMode(st.mode);
+  const ov=document.getElementById('tourOverlay');
+  ov.classList.add('show');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>tourPosition()));
+}
+function tourPosition(){
+  if(tourIdx<0)return;
+  const st=TOUR_STEPS[tourIdx];
+  const spot=document.getElementById('tourSpot');
+  const card=document.getElementById('tourCard');
+  const last=tourIdx===TOUR_STEPS.length-1;
+  const dots='<div class="tour-dots">'+TOUR_STEPS.map((_,i)=>'<i class="'+(i===tourIdx?'on':'')+'"></i>').join('')+'</div>';
+  let btns;
+  if(last){
+    btns='<a class="t-cta" href="https://lsp-ima.github.io/team-board-LP/#trial" target="_blank" rel="noopener">🖐 無料体験を申し込む</a>'+
+      '<div class="t-btns"><button class="t-skip" onclick="tourEnd(true)">閉じてデモを自由に触る</button>'+
+      '<button class="t-back" onclick="tourBack()">戻る</button></div>';
+  }else{
+    btns='<div class="t-btns"><button class="t-skip" onclick="tourEnd()">スキップ</button>'+
+      (tourIdx>0?'<button class="t-back" onclick="tourBack()">戻る</button>':'')+
+      '<button class="t-next" style="'+(tourIdx>0?'':'margin-left:auto')+'" onclick="tourNext()">次へ</button></div>';
+  }
+  card.innerHTML='<div class="t-step">STEP '+(tourIdx+1)+' / '+TOUR_STEPS.length+'</div>'+
+    '<h4>'+st.title+'</h4><p>'+st.text+'</p>'+dots+btns;
+  const el=st.sel?document.querySelector(st.sel):null;
+  if(el){
+    el.scrollIntoView({block:'center',behavior:'auto'});
+    const r=el.getBoundingClientRect();
+    const pad=8;
+    spot.style.display='';
+    spot.style.left=(r.left-pad)+'px';
+    spot.style.top=(r.top-pad)+'px';
+    spot.style.width=(r.width+pad*2)+'px';
+    spot.style.height=(r.height+pad*2)+'px';
+    const ch=card.offsetHeight||220, cw=card.offsetWidth||320;
+    let top=r.bottom+pad+12;
+    if(top+ch>window.innerHeight-16)top=Math.max(16,r.top-pad-12-ch);
+    let left=Math.min(Math.max(16,r.left),window.innerWidth-cw-16);
+    card.style.left=left+'px';
+    card.style.top=top+'px';
+  }else{
+    spot.style.display='none';
+    const ch=card.offsetHeight||260, cw=card.offsetWidth||320;
+    card.style.left=Math.max(16,(window.innerWidth-cw)/2)+'px';
+    card.style.top=Math.max(16,(window.innerHeight-ch)/2-30)+'px';
+  }
+}
+window.addEventListener('resize',()=>{if(tourIdx>=0)tourPosition();});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    if(tourIdx>=0){tourEnd();return;}
+    closeModal();
+  }
+});
+document.getElementById('vlOverlay').addEventListener('click',e=>{if(e.target.id==='vlOverlay')closeModal();});
+
+/* ---------- 初期化 ---------- */
+applyTheme(document.documentElement.classList.contains('dark')?'dark':'light',false);
+buildMyPlays();
+layout();defaultPositions();draw();
+sRenderList();bLoadList();renderScoreList();renderRoster();renderVlib();renderPmenu();
+updateCoachUI();
+window.addEventListener('load',()=>{setTimeout(tourStart,400);});
+</script>
+</body>
+</html>

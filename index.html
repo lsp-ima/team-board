@@ -504,7 +504,7 @@ function formatSchedTime(val) {
 
     <fieldset class="fs">
       <legend>マイプレー（コーチ）</legend>
-      <div id="myPlayButtons"><span class="label">まだありません。</span></div>
+      <div id="myPlayButtons"><span class="label">まだありません。「✏️ ルートを描く」でプレーを作って保存すると、ここに並びます。</span></div>
       <div class="row" style="margin-top:8px">
         <button onclick="exportPlays()">⬇ バックアップ</button>
         <button onclick="document.getElementById('importFile').click()">⬆ 読み込む</button>
@@ -617,7 +617,7 @@ function formatSchedTime(val) {
     </div>
 
     <div id="bModePaneBbs" style="display:none">
-      <div id="bSetupNotice" class="b-notice" style="display:none">まだ接続先（GASのURL）が設定されていません。</div>
+      <div id="bSetupNotice" class="b-notice" style="display:none">接続設定が完了していません。お手数ですが運営までご連絡ください。</div>
       <div class="b-tabs">
         <button class="active" id="bTabList" onclick="setBTab('list')">みんなの質問</button>
         <button id="bTabPost" onclick="setBTab('post')">質問する</button>
@@ -1272,7 +1272,7 @@ function renderMyPlays(){
   const box=document.getElementById('myPlayButtons');
   box.innerHTML='';
   if(!myPlays.length){
-    box.innerHTML='<span class="label">まだありません。「● 自分で記録」→ ドラッグ → 保存で追加できます。</span>';
+    box.innerHTML='<span class="label">まだありません。「✏️ ルートを描く」でプレーを作って保存すると、ここに並びます。</span>';
     return;
   }
   myPlays.forEach((sp,idx)=>{
@@ -2084,7 +2084,7 @@ async function teamGetStatus(team){
 function gateFailToast(status){
   if(status==='error'){ toast('通信エラーが発生しました。時間をおいてもう一度お試しください'); }
   else if(status==='expired'){ toast('ご利用期間が終了しています。継続をご希望の場合はお申し込みをお願いします'); }
-  else { toast('この合言葉は登録されていません'); }
+  else { toast('この合言葉は登録されていません。入力内容をもう一度ご確認ください'); }
 }
 async function teamSetCoachPass(team, pass){
   const { data, error } = await sb.rpc('setup_coach_pass', { p_team: team, p_pass: pass });
@@ -2250,14 +2250,14 @@ async function sSaveForm(id) {
     route: document.getElementById('sf_route').value,
     coach: bCoachPass
   };
-  closeModal(); toast('保存中...'); let res;
+  closeModal(); toast('保存中…'); let res;
   try { res = await bApi(reqData); } catch(e) {}
   if(res && res.ok) { toast('予定を保存しました'); sRenderList(); } else { toast('保存に失敗しました'); }
 }
 
 function sDel(id) {
   vlConfirm('予定の削除', 'この予定を削除しますか？', async () => {
-    closeModal(); toast('削除中...'); let res;
+    closeModal(); toast('削除中…'); let res;
     try { res = await bApi({action: 's_del', id: id, coach: bCoachPass}); } catch(e) {}
     if(res && res.ok) { toast('削除しました'); sRenderList(); } else { toast('削除に失敗しました'); }
   });
@@ -2324,7 +2324,7 @@ function setBVis(v,btn){
 }
 document.getElementById('bQAnon').addEventListener('change',function(){
   if(this.checked && bVisMode==='private'){
-    toast('コーチにだけの質問は匿名にできません');
+    toast('「コーチにだけ」の質問は匿名では送れません。名前を入力してください');
     this.checked = false;
     return;
   }
@@ -2340,7 +2340,7 @@ async function bLoadList(){
   if(!res.ok){ area.innerHTML='<div class="b-empty">読み込めませんでした。</div>'; return; }
   document.getElementById('bCoachState').textContent=res.coach?'コーチモードON':'';
   sRenderList();
-  if(!res.items.length){ area.innerHTML='<div class="b-empty">まだ質問はありません。</div>'; }else{ area.innerHTML=res.items.map(it=>bCardHTML(it,res.coach)).join(''); }
+  if(!res.items.length){ area.innerHTML='<div class="b-empty">まだ質問はありません。「質問する」タブから気軽にどうぞ。</div>'; }else{ area.innerHTML=res.items.map(it=>bCardHTML(it,res.coach)).join(''); }
 }
 function bCardHTML(it,coach){
   const who=it.anon?'<span class="who anon">匿名</span>':'<span class="who">'+esc(it.name||'名前なし')+'</span>';
@@ -2351,7 +2351,7 @@ function bCardHTML(it,coach){
   return '<div class="b-card">'+time+who+pvt+'<div class="qt">'+esc(it.text)+'</div>'+ans+cact+'</div>';
 }
 function bFmt(t){try{const d=new Date(t);return(d.getMonth()+1)+'/'+d.getDate()+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}catch(e){return '';}}
-async function bSubmit(){ if(!bConfigured())return; const text=document.getElementById('bQText').value.trim();if(!text){toast('質問を入力してください');return;} const anon=document.getElementById('bQAnon').checked; const name=document.getElementById('bQName').value.trim(); if(bVisMode==='private'){ if(anon){toast('コーチにだけ送る場合は、匿名にできません');return;} if(!name){toast('名前を入力してください');return;} } let res;try{res=await bApi({action:'post',text,vis:bVisMode,anon:anon?'1':'0',name:anon?'':name});}catch(e){toast('送信できませんでした');return;} if(!res.ok){toast('送信できませんでした');return;} document.getElementById('bQText').value='';document.getElementById('bQName').value=''; if(bVisMode==='private'&&res.ticket){ showModal('<h3>送信しました</h3><p style="font-size:13px;line-height:1.6">受付番号を控えてください。</p><div style="font-size:26px;font-weight:800;letter-spacing:.1em;text-align:center;margin:14px 0;color:var(--accent)">'+esc(res.ticket)+'</div><div class="vl-mbtns"><button class="ok" onclick="closeModal()">OK</button></div>'); }else{toast('質問を送りました');setBTab('list');bLoadList();} }
+async function bSubmit(){ if(!bConfigured())return; const text=document.getElementById('bQText').value.trim();if(!text){toast('質問を入力してください');return;} const anon=document.getElementById('bQAnon').checked; const name=document.getElementById('bQName').value.trim(); if(bVisMode==='private'){ if(anon){toast('「コーチにだけ」の質問は匿名では送れません。名前を入力してください');return;} if(!name){toast('名前を入力してください');return;} } let res;try{res=await bApi({action:'post',text,vis:bVisMode,anon:anon?'1':'0',name:anon?'':name});}catch(e){toast('送信できませんでした');return;} if(!res.ok){toast('送信できませんでした');return;} document.getElementById('bQText').value='';document.getElementById('bQName').value=''; if(bVisMode==='private'&&res.ticket){ showModal('<h3>送信しました</h3><p style="font-size:13px;line-height:1.6">受付番号を控えてください。</p><div style="font-size:26px;font-weight:800;letter-spacing:.1em;text-align:center;margin:14px 0;color:var(--accent)">'+esc(res.ticket)+'</div><div class="vl-mbtns"><button class="ok" onclick="closeModal()">OK</button></div>'); }else{toast('質問を送りました');setBTab('list');bLoadList();} }
 async function bCheckTicket(){ if(!bConfigured())return; const t=document.getElementById('bTCode').value.trim(); const box=document.getElementById('bTicketResult');if(!t){box.innerHTML='';return;} box.innerHTML='<div class="b-empty">確認中…</div>'; let res;try{res=await bApi({action:'ticket',ticket:t});}catch(e){box.innerHTML='<div class="b-empty">確認できませんでした。</div>';return;} if(!res.ok){box.innerHTML='<div class="b-empty">その受付番号は見つかりませんでした。</div>';return;} const it=res.item; box.innerHTML='<div class="b-card"><div class="qt">'+esc(it.text)+'</div>'+(it.answered?'<div class="b-ans"><div class="lab">コーチの回答</div><div class="body">'+esc(it.answer)+'</div></div>':'<div class="b-waiting">まだ回答待ちです</div>')+'</div>'; }
 async function openCoach(){
   if(bCoachPass){
@@ -2587,7 +2587,7 @@ function renderAttModal(){
   html+='<div class="vl-mbtns"><button class="ng" onclick="openAtt(attCurGame)">↻ 最新に更新</button><button class="ok" onclick="closeModal()">閉じる</button></div>';
   document.getElementById('vlModal').innerHTML=html;
 }
-function attSetTarget(t){ if(!bCoachPass){ toast('対象の変更はコーチのみ'); return; } attCurRec.target=t; attendance[attCurGame]=attCurRec; persistAttendance(); renderAttModal(); }
+function attSetTarget(t){ if(!bCoachPass){ toast('対象の変更はコーチのみです'); return; } attCurRec.target=t; attendance[attCurGame]=attCurRec; persistAttendance(); renderAttModal(); }
 async function attMark(pid,st){
   const next = attCurRec.marks[pid]===st ? '' : st;
   if(next==='') delete attCurRec.marks[pid]; else attCurRec.marks[pid]=next;
@@ -2661,7 +2661,7 @@ function openScoreEntry(id){
   const coach=!!bCoachPass;
   let html='<h3>スコア　'+esc(formatSchedDate(scCur.date))+'　vs '+esc(scCur.opponent||'')+'</h3>';
   html+='<div class="b-hint">自チーム選手の得点（背番号順）'+(coach?'':'／入力はコーチのみ')+'</div>';
-  if(!scCur.rows||!scCur.rows.length){ html+='<div class="b-empty">対象選手がいません（メンバーでA/Bを振り分けてから追加してください）。</div>'; }
+  if(!scCur.rows||!scCur.rows.length){ html+='<div class="b-empty">対象選手がいません。「メンバー」でチーム分けをしてから追加してください。</div>'; }
   (scCur.rows||[]).forEach((r,i)=>{
     html+='<div class="vl-row"><span class="vl-main"><span class="ic">'+esc(r.num||'?')+'</span><span class="lab">'+esc(r.name)+'</span></span><span class="vl-act">'+
       (coach?'<input type="text" inputmode="numeric" style="width:64px;text-align:center;padding:7px" value="'+esc(String(r.pts||''))+'" onchange="scSetRow('+i+',this.value)">':'<span class="lab" style="font-weight:700">'+esc(String(r.pts||0))+'</span>')+'</span></div>';
