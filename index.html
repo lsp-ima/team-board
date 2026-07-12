@@ -1363,29 +1363,35 @@ function importPlays(ev){
    動画ライブラリの復元部分
 ======================================================== */
 const VLIBKEY='baske_vlib_v1';
-let vlib=null, vidTab='all', vidPlayerIdx=0;
+let vlib=null, vidTab='all', vidPlayerId=null;
 
 const VLIB_SEED = {
   all: {
     note: 'チーム全員に見てほしい動画をここに追加できます。「＋ 動画を追加」からYouTubeなどのURLを貼るだけ。',
     videos: []
   },
-  players: []
+  players: [],
+  byPlayer: {}   // メンバー名簿の選手ID → { style, note, videos:[] }
 };
 
 async function loadVlib(){
   try{ const s=await tDataGet('vlib'); vlib = s?JSON.parse(s):vclone(VLIB_SEED); }
   catch(e){ vlib=vclone(VLIB_SEED); }
   if(!vlib.all||!Array.isArray(vlib.players)) vlib=vclone(VLIB_SEED);
+  if(!vlib.byPlayer || typeof vlib.byPlayer!=='object') vlib.byPlayer={};
 }
 
 function persistVlib(){
   tDataSave('vlib', JSON.stringify(vlib));
 }
 
+function playerVidData(pid){
+  if(!vlib.byPlayer[pid]) vlib.byPlayer[pid]={style:'',note:'',videos:[]};
+  return vlib.byPlayer[pid];
+}
 function getVideos(loc){
   if(loc==='all')return vlib.all.videos;
-  if(loc.indexOf('p:')===0)return vlib.players[+loc.slice(2)].videos;
+  if(loc.indexOf('p:')===0)return playerVidData(loc.slice(2)).videos;
   return [];
 }
 
@@ -1424,31 +1430,33 @@ function sectionHTML(loc){
 function renderVlib(){
   const area=document.getElementById('vidArea');
   if(vidTab==='all'){ area.innerHTML=sectionHTML('all'); return; }
-  if(!vlib.players.length){
-    area.innerHTML='<div class="vl-ptabs"><button class="addp" onclick="addPlayer()">＋ 選手を追加</button></div>';
+  // 「選手ごと」＝メンバー名簿(roster)に連動
+  const list = roster || [];
+  if(!list.length){
+    area.innerHTML='<div class="vl-note">「👥 メンバー」タブで選手を登録すると、ここに選手ごとの動画を追加できます。<br>（メンバーの登録・編集はコーチモードで行えます）</div>';
     return;
   }
-  if(vidPlayerIdx>=vlib.players.length) vidPlayerIdx=vlib.players.length-1;
+  if(!list.find(p=>p.id===vidPlayerId)) vidPlayerId=list[0].id;
   let tabs='<div class="vl-ptabs">';
-  vlib.players.forEach((p,i)=>{
-    tabs+=`<button class="${i===vidPlayerIdx?'active':''}" onclick="setVidPlayer(${i})">${escHtml(p.name)}</button>`;
+  list.forEach(p=>{
+    tabs+=`<button class="${p.id===vidPlayerId?'active':''}" onclick="setVidPlayer('${p.id}')">${escHtml(p.name)}${p.num?' <span class="tag">#'+esc(p.num)+'</span>':''}</button>`;
   });
-  tabs+='<button class="addp" onclick="addPlayer()">＋ 選手</button></div>';
-  const i=vidPlayerIdx, p=vlib.players[i];
+  tabs+='</div>';
+  const p=list.find(x=>x.id===vidPlayerId);
+  const pd=playerVidData(p.id);
   const body=`<div>
-    <div class="vl-head"><span class="vl-name">${escHtml(p.name)}</span>${p.style?`<span class="vl-style">目標：${escHtml(p.style)}</span>`:''}</div>
-    ${p.note?`<div class="vl-note">${escHtml(p.note)}</div>`:''}
-    ${p.videos.map((v,idx)=>vrowHTML('p:'+i,idx)).join('')}
+    <div class="vl-head"><span class="vl-name">${escHtml(p.name)}</span>${pd.style?`<span class="vl-style">目標：${escHtml(pd.style)}</span>`:''}</div>
+    ${pd.note?`<div class="vl-note">${escHtml(pd.note)}</div>`:''}
+    ${pd.videos.map((v,idx)=>vrowHTML('p:'+p.id,idx)).join('')}
     <div class="vl-addrow">
-      <button class="vl-addbtn" onclick="addVid('p:${i}')">＋ 動画を追加</button>
-      <button class="vl-addbtn" onclick="editPlayer(${i})">✎ 選手を編集</button>
-      <button class="vl-addbtn" onclick="delPlayer(${i})">✕ 選手を削除</button>
+      <button class="vl-addbtn" onclick="addVid('p:${p.id}')">＋ 動画を追加</button>
+      <button class="vl-addbtn" onclick="editPlayerVid('${p.id}')">✎ 目標・メモを編集</button>
     </div>
   </div>`;
   area.innerHTML=tabs+body;
 }
 
-function setVidPlayer(i){ vidPlayerIdx=i; renderVlib(); }
+function setVidPlayer(id){ vidPlayerId=id; renderVlib(); }
 
 /* === アプリ内で動画を再生（YouTube埋め込み） === */
 function ytEmbed(url){
@@ -1546,29 +1554,12 @@ function editNote(loc){
   vlFormModal('メモを編集',[{key:'note',label:'メモ',value:obj.note,type:'textarea'}],
     r=>{ obj.note=r.note; persistVlib(); vlCloseModal(); renderVlib(); });
 }
-function addPlayer(){
-  vlFormModal('選手を追加',[
-    {key:'name',label:'選手名',value:''},
-    {key:'style',label:'目指すプレースタイル（任意）',value:''}
-  ],r=>{
-    if(!r.name.trim())return;
-    vlib.players.push({name:r.name.trim(), style:r.style.trim(), note:'', videos:[]});
-    vidPlayerIdx=vlib.players.length-1; persistVlib(); vlCloseModal(); renderVlib();
-  });
-}
-function editPlayer(i){
-  const p=vlib.players[i];
-  vlFormModal('選手を編集',[
-    {key:'name',label:'選手名',value:p.name},
-    {key:'style',label:'目指すプレースタイル',value:p.style},
-    {key:'note',label:'メモ',value:p.note,type:'textarea'}
-  ],r=>{ if(r.name.trim())p.name=r.name.trim(); p.style=r.style.trim(); p.note=r.note; persistVlib(); vlCloseModal(); renderVlib(); });
-}
-function delPlayer(i){
-  vlConfirm('選手を削除','「'+vlib.players[i].name+'」を削除しますか？',()=>{
-    vlib.players.splice(i,1);
-    if(vidPlayerIdx>=vlib.players.length) vidPlayerIdx=Math.max(0,vlib.players.length-1);
-    persistVlib(); vlCloseModal(); renderVlib(); });
+function editPlayerVid(pid){
+  const pd=playerVidData(pid);
+  vlFormModal('目標・メモを編集',[
+    {key:'style',label:'目指すプレースタイル（例：スコアラー）',value:pd.style||''},
+    {key:'note',label:'メモ',value:pd.note||'',type:'textarea'}
+  ],r=>{ pd.style=(r.style||'').trim(); pd.note=r.note||''; persistVlib(); vlCloseModal(); renderVlib(); });
 }
 function exportVlib(){
   const blob=new Blob([JSON.stringify(vlib,null,1)],{type:'application/json'});
@@ -1579,14 +1570,15 @@ function importVlib(ev){
   const f=ev.target.files[0]; if(!f)return;
   const r=new FileReader();
   r.onload=()=>{ try{ const d=JSON.parse(r.result);
-    if(!d.all||!Array.isArray(d.players))throw 0;
-    vlib=d; vidPlayerIdx=0; persistVlib(); renderVlib();
+    if(!d.all)throw 0;
+    vlib=d; if(!Array.isArray(vlib.players))vlib.players=[]; if(!vlib.byPlayer||typeof vlib.byPlayer!=='object')vlib.byPlayer={};
+    vidPlayerId=null; persistVlib(); renderVlib();
   }catch(e){ alert('読み込めませんでした。ファイル形式を確認してください。'); } ev.target.value=''; };
   r.readAsText(f);
 }
 function resetVlib(){
   vlConfirm('初期構成に戻す','記事の並びに戻します。設定したURLは消えます。よろしいですか？',()=>{
-    vlib=vclone(VLIB_SEED); vidPlayerIdx=0; persistVlib(); vlCloseModal(); renderVlib(); });
+    vlib=vclone(VLIB_SEED); vidPlayerId=null; persistVlib(); vlCloseModal(); renderVlib(); });
 }
 
 /* ===== メインタブ ===== */
@@ -1598,7 +1590,7 @@ function setMainTab(t){
   document.getElementById('pane-'+t).classList.add('active');
 
   if(t==='board'){ loadMyPlays().then(renderMyPlays); loadPlayerPlays().then(renderPlayerPlays); }
-  if(t==='video'){ loadVlib().then(renderVlib); }
+  if(t==='video'){ Promise.all([loadVlib(),loadRoster()]).then(renderVlib); }
   if(t==='menu'){ Promise.all([loadPmenu(), loadMyPlays(), loadPlayerPlays()]).then(renderPmenu); }
   if(t==='roster'){ Promise.all([loadRoster(),loadTeamLabels()]).then(renderRoster); }
   if(t==='score'){ Promise.all([loadScores(),loadTeamLabels()]).then(renderScoreList); }
