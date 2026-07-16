@@ -290,6 +290,18 @@ canvas{display:block;border-radius:var(--radius);touch-action:none;box-shadow:va
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .fs{width:100%;margin-top:12px}
 
+/* 立体ビュー */
+#court3dStage{width:100%;max-width:680px;margin:0 auto;padding:64px 0 14px;perspective:1150px;overflow:visible;touch-action:none}
+#court3dPlane{position:relative;transform-style:preserve-3d;transition:transform .12s ease;transform-origin:center center;margin:0 auto;will-change:transform}
+#court3dPlane canvas{display:block;width:100%;height:auto;margin:0!important;border-radius:10px}
+.p3d{position:absolute;transform-origin:bottom center;pointer-events:none;will-change:transform,left,top}
+.p3d img{display:block;width:100%;height:auto;filter:drop-shadow(0 2px 2px rgba(0,0,0,.32))}
+.p3d .p3dnum{position:absolute;top:-7px;left:50%;transform:translateX(-50%);background:#1976d2;color:#fff;font-size:10px;font-weight:900;padding:1px 6px;border-radius:8px;border:1.5px solid #fff;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.p3d.def .p3dnum{background:#d32f2f}
+.p3dsh{position:absolute;transform-origin:center;pointer-events:none;border-radius:50%;background:radial-gradient(ellipse at center,rgba(0,0,0,.34),rgba(0,0,0,0) 70%)}
+.b3d{position:absolute;transform-origin:center;border-radius:50%;pointer-events:none;background:radial-gradient(circle at 35% 30%,#ffb35a,#e2620a 70%);border:1px solid #a34500;box-shadow:0 2px 4px rgba(0,0,0,.35)}
+#btn3d.active{background:var(--grad-accent);border-color:transparent;color:#fff;font-weight:700}
+
 /* スマホ最適化 */
 @media(max-width:560px){
   .app-header{padding:12px 14px 8px}
@@ -448,6 +460,15 @@ function formatSchedTime(val) {
     <button class="active" id="btnHalf" onclick="setCourt('half')">ハーフコート</button>
     <button id="btnFull" onclick="setCourt('full')">フルコート</button>
   </div>
+
+  <div id="court3dBar" class="row" style="margin-top:10px;gap:10px;flex-wrap:wrap">
+    <button id="btn3d" onclick="toggle3D()">🎥 立体で見る</button>
+    <span id="c3dControls" class="row" style="display:none;gap:14px;align-items:center;flex-wrap:wrap">
+      <label class="label" style="display:flex;align-items:center;gap:6px">見下ろし<input type="range" id="c3dTilt" min="20" max="72" value="56" oninput="setTilt(this.value)" style="width:96px"></label>
+      <label class="label" style="display:flex;align-items:center;gap:6px">回転<input type="range" id="c3dSpin" min="-45" max="45" value="0" oninput="setSpin(this.value)" style="width:96px"></label>
+    </span>
+  </div>
+  <div id="court3dStage" style="display:none"><div id="court3dPlane"></div></div>
 
   <canvas id="court" style="margin-top:12px"></canvas>
   <div class="legend">
@@ -693,6 +714,7 @@ let originX=BENCH_W;
 let speed=1, recording=false, animating=false, raf=null;
 let drag=null, dragOff={x:0,y:0};
 const R_PLAYER = 0.65;
+let is3D=false, tilt3d=56, spin3d=0;   // 立体ビュー
 
 let offense=[], defense=[], ball={m:[7.5,2.2]};
 let players=[];
@@ -836,7 +858,8 @@ function draw(){
   ctx.clearRect(0,0,W,H);
   if(courtMode==='half')drawHalf();else drawFull();
   drawPaths();
-  if(((typeof boardSub!=='undefined'&&boardSub==='player')?playerRouteMode:routeMode) && typeof drawRoutes==='function') drawRoutes();
+  if(!is3D && ((typeof boardSub!=='undefined'&&boardSub==='player')?playerRouteMode:routeMode) && typeof drawRoutes==='function') drawRoutes();
+  if(is3D){ render3D(); return; }   // 立体時は選手・ボールをDOMで表示
   defense.forEach(p=>{ if(!p.hidden) drawDisc(p.m,'#d32f2f',p.label); });
   offense.forEach(p=>{ if(!p.hidden) drawDisc(p.m,'#1976d2',p.label); });
   drawBall();
@@ -1260,6 +1283,104 @@ function clearPaths(){
 }
 function resetPositions(){ defaultPositions(); clearPaths(); }
 
+/* ===== 立体ビュー（斜め見下ろし・アニメ選手ビルボード） ===== */
+let p3dEls={};
+function el3(id){ return document.getElementById(id); }
+function apply3DTransform(){
+  const plane=el3('court3dPlane');
+  if(plane) plane.style.transform='scale(.8) rotateX('+tilt3d+'deg) rotateZ('+spin3d+'deg)';
+}
+function setTilt(v){ tilt3d=+v; if(is3D) draw(); apply3DTransform(); }
+function setSpin(v){ spin3d=+v; if(is3D) draw(); apply3DTransform(); }
+function toggle3D(){
+  is3D=!is3D;
+  const stage=el3('court3dStage'), plane=el3('court3dPlane'), ctrl=el3('c3dControls'), btn=el3('btn3d');
+  if(is3D){
+    if(routeMode)routeCancel();
+    if(typeof playerRouteMode!=='undefined'&&playerRouteMode&&typeof routeCancelPlayer==='function')routeCancelPlayer();
+    if(animating)stop();
+    if(typeof playerAnimating!=='undefined'&&playerAnimating&&typeof stopPlayer==='function')stopPlayer();
+    plane.appendChild(canvas);
+    stage.style.display=''; ctrl.style.display='';
+    btn.classList.add('active'); btn.textContent='🔙 平面に戻す';
+    apply3DTransform();
+  }else{
+    const legend=document.querySelector('#pane-board .legend');
+    legend.parentNode.insertBefore(canvas, legend);
+    stage.style.display='none'; ctrl.style.display='none';
+    btn.classList.remove('active'); btn.textContent='🎥 立体で見る';
+    clear3D();
+  }
+  draw();
+}
+function clear3D(){
+  const plane=el3('court3dPlane'); if(!plane) return;
+  plane.querySelectorAll('.p3d,.p3dsh,.b3d').forEach(n=>n.remove());
+  p3dEls={};
+}
+function ensure3DEl(key, cls){
+  if(p3dEls[key]) return p3dEls[key];
+  const plane=el3('court3dPlane');
+  const sh=document.createElement('div'); sh.className='p3dsh';
+  const wrap=document.createElement('div'); wrap.className='p3d '+cls;
+  const img=document.createElement('img'); img.alt=''; img.onerror=function(){ this.style.visibility='hidden'; };
+  const num=document.createElement('span'); num.className='p3dnum';
+  wrap.appendChild(img); wrap.appendChild(num);
+  plane.appendChild(sh); plane.appendChild(wrap);
+  return (p3dEls[key]={wrap,img,num,sh});
+}
+function render3D(){
+  const plane=el3('court3dPlane'); if(!plane) return;
+  const sf=(plane.clientWidth||W)/W;
+  const uniback='translate(-50%,-100%) rotateZ('+(-spin3d)+'deg) rotateX('+(-tilt3d)+'deg)';
+  const list=[...offense.map((p,i)=>({p,team:'off',i})),...defense.map((p,i)=>({p,team:'def',i}))];
+  const seen={};
+  list.forEach(o=>{
+    const p=o.p, key=o.team+o.i; seen[key]=1;
+    const rec=ensure3DEl(key, o.team==='def'?'def':'off');
+    if(p.hidden){ rec.wrap.style.display='none'; rec.sh.style.display='none'; return; }
+    rec.wrap.style.display=''; rec.sh.style.display='';
+    const px=mx(p.m[0])*sf, py=my(p.m[1])*sf;
+    const pw=Math.max(22, R_PLAYER*2.0*scale*sf);
+    const src=(o.team==='off'?'p-blue-':'p-white-')+p.label+'.png';
+    if(rec.img.getAttribute('src')!==src){ rec.img.src=src; rec.img.style.visibility=''; }
+    rec.num.textContent=p.label;
+    rec.wrap.style.width=pw+'px';
+    rec.wrap.style.left=px+'px'; rec.wrap.style.top=py+'px';
+    rec.wrap.style.transform=uniback;
+    const sw=pw*0.66, shh=sw*0.4;
+    rec.sh.style.width=sw+'px'; rec.sh.style.height=shh+'px';
+    rec.sh.style.left=px+'px'; rec.sh.style.top=py+'px';
+    rec.sh.style.transform='translate(-50%,-50%)';
+  });
+  Object.keys(p3dEls).forEach(k=>{ if(k!=='ball' && !seen[k] && p3dEls[k].wrap){ p3dEls[k].wrap.style.display='none'; p3dEls[k].sh.style.display='none'; } });
+  let b=p3dEls.ball;
+  if(!b){ const d=document.createElement('div'); d.className='b3d'; plane.appendChild(d); b=p3dEls.ball={ball:d}; }
+  const bx=mx(ball.m[0])*sf, by=my(ball.m[1])*sf, bs=Math.max(9,0.56*scale*sf);
+  b.ball.style.width=bs+'px'; b.ball.style.height=bs+'px';
+  b.ball.style.left=bx+'px'; b.ball.style.top=by+'px';
+  b.ball.style.transform='translate(-50%,-60%) rotateZ('+(-spin3d)+'deg) rotateX('+(-tilt3d)+'deg)';
+}
+window.addEventListener('resize',()=>{ if(is3D) draw(); });
+/* スマホ／マウスで立体を指ドラッグ操作（横=回転・縦=見下ろし） */
+function init3DDrag(){
+  const stage=el3('court3dStage'); if(!stage||stage._dragInit) return; stage._dragInit=1;
+  let dg=false, sx=0, sy=0, st=0, ss=0;
+  stage.addEventListener('pointerdown',e=>{ if(!is3D) return; dg=true; sx=e.clientX; sy=e.clientY; st=tilt3d; ss=spin3d; try{stage.setPointerCapture(e.pointerId);}catch(_){} });
+  stage.addEventListener('pointermove',e=>{ if(!dg) return;
+    const dx=e.clientX-sx, dy=e.clientY-sy;
+    spin3d=Math.max(-45,Math.min(45, ss+dx*0.3));
+    tilt3d=Math.max(20,Math.min(72, st-dy*0.3));
+    const ts=el3('c3dSpin'), tt=el3('c3dTilt'); if(ts)ts.value=spin3d; if(tt)tt.value=tilt3d;
+    draw(); apply3DTransform();
+  });
+  const end=()=>{ dg=false; };
+  stage.addEventListener('pointerup',end);
+  stage.addEventListener('pointercancel',end);
+  stage.addEventListener('pointerleave',end);
+}
+init3DDrag();
+
 let lastRecording=null;
 let myPlays=[];
 
@@ -1619,6 +1740,7 @@ function setBoardSub(sub){
 }
 
 canvas.addEventListener('pointerdown',e=>{
+  if(is3D) return;   // 立体表示中はドラッグ編集しない（平面モードで編集）
   const m=getPos(e);
   const activeRoute=boardSub==='coach'?routeMode:playerRouteMode;
   const activeDM=boardSub==='coach'?drawMode:playerDrawMode;
