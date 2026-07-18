@@ -2489,6 +2489,7 @@ async function openCoach(){
   if(bCoachPass){
     showModal('<h3>コーチモード</h3><p style="font-size:13px;line-height:1.6">現在ONです。</p>'+
       '<div class="vl-mbtns" style="flex-wrap:wrap"><button class="ng" onclick="openChangePass()">パスワード変更</button>'+
+      '<button class="ng" onclick="bOpenNotify()">質問の通知メール</button>'+
       '<button class="ng" onclick="closeModal()">そのまま</button>'+
       '<button class="ok" onclick="bCoachOff()">OFFにする</button></div>');
     return;
@@ -2522,6 +2523,22 @@ async function bCoachSetup(){
     '<div style="font-size:24px;font-weight:800;letter-spacing:.12em;text-align:center;margin:14px 0;color:var(--accent)">'+esc(recovery)+'</div>'+
     '<div class="vl-mbtns"><button class="ok" onclick="closeModal()">控えました</button></div>');
   bUpdateCoachUI(); bLoadList();
+}
+async function bOpenNotify(){
+  showModal('<h3>質問の通知メール</h3><div class="b-empty">確認中…</div>');
+  let cur=''; try{ const {data}=await sb.rpc('notify_email_get',{p_team:bBoardPass,p_coach:bCoachPass}); if(data) cur=data; }catch(e){}
+  showModal('<h3>質問の通知メール</h3>'+
+    '<p style="font-size:12.5px;line-height:1.6;color:var(--muted)">質問ボードに新しい質問が届いたとき、このアドレスにお知らせメールが届きます。空にして保存すると通知を止めます。</p>'+
+    '<div class="vl-field"><label>通知先メールアドレス</label><input type="email" id="bNmail" value="'+esc(cur)+'" placeholder="coach@example.com"></div>'+
+    '<div class="vl-mbtns"><button class="ng" onclick="closeModal()">キャンセル</button><button class="ok" onclick="bSaveNotify()">保存</button></div>');
+  setTimeout(()=>{const el=document.getElementById('bNmail');if(el)el.focus();},50);
+}
+async function bSaveNotify(){
+  const v=(document.getElementById('bNmail').value||'').trim();
+  if(v && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)){ toast('メールアドレスの形式を確認してください'); return; }
+  toast('保存中…');
+  let ok=false; try{ const {data,error}=await sb.rpc('notify_email_set',{p_team:bBoardPass,p_coach:bCoachPass,p_email:v}); ok=!error&&data===true; }catch(e){}
+  if(ok){ closeModal(); toast(v?'通知メールを設定しました':'通知を停止しました'); } else toast('保存に失敗しました');
 }
 function openChangePass(){
   showModal('<h3>パスワード変更</h3><div class="vl-field"><label>新しいパスワード</label><input type="text" id="bCnew"></div>'+
