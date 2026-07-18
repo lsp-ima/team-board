@@ -2490,7 +2490,7 @@ async function openCoach(){
     showModal('<h3>コーチモード</h3><p style="font-size:13px;line-height:1.6">現在ONです。</p>'+
       '<div class="vl-mbtns" style="flex-wrap:wrap"><button class="ng" onclick="openChangePass()">パスワード変更</button>'+
       '<button class="ng" onclick="bOpenNotify()">質問の通知メール</button>'+
-      '<button class="ng" onclick="closeModal()">そのまま</button>'+
+      '<button class="ng" onclick="closeModal()">閉じる</button>'+
       '<button class="ok" onclick="bCoachOff()">OFFにする</button></div>');
     return;
   }
@@ -2579,7 +2579,7 @@ async function bDoRecover(){
 }
 async function bCoachLogin(){ const pass=document.getElementById('bCpass').value;if(!pass)return; let res;try{res=await bApi({action:'auth',coach:pass});}catch(e){toast('確認できませんでした');return;} if(res.ok){bCoachPass=pass; closeModal();bUpdateCoachUI();toast('コーチモードON');bLoadList();} else toast('パスワードが違います'); }
 function bCoachOff(){bCoachPass=null; closeModal();bUpdateCoachUI();bLoadList();}
-function bUpdateCoachUI(){ document.getElementById('bCoachArea').innerHTML=bCoachPass ?'<span class="coachbadge">コーチON</span> <button class="b-ghost" onclick="openCoach()">OFF</button>' :'<button class="b-ghost" onclick="openCoach()">コーチ</button>'; document.getElementById('sAddBtn').style.display = bCoachPass ? '' : 'none';
+function bUpdateCoachUI(){ document.getElementById('bCoachArea').innerHTML=bCoachPass ?'<span class="coachbadge">コーチON</span> <button class="b-ghost" onclick="bOpenNotify()">📧 通知メール</button> <button class="b-ghost" onclick="openCoach()">OFF</button>' :'<button class="b-ghost" onclick="openCoach()">コーチ</button>'; document.getElementById('sAddBtn').style.display = bCoachPass ? '' : 'none';
   const navR=document.getElementById('navRoster'); if(navR) navR.style.display = bCoachPass ? '' : 'none';
   if(!bCoachPass){ const pr=document.getElementById('pane-roster'); if(pr && pr.classList.contains('active')) setMainTab('score'); }
   if(document.getElementById('pane-score') && document.getElementById('pane-score').classList.contains('active')) renderScoreList();
