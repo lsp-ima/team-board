@@ -2642,6 +2642,8 @@ function pushUpdateUI(){
   const on=!!safeLSget('baske_push_token') && ('Notification' in window) && Notification.permission==='granted';
   b.textContent=on?'🔔 通知ON':'🔔 通知';
 }
+/* ホーム画面アイコンの①バッジを消す（ボードを見た＝既読とみなす） */
+function pushClearBadge(){ try{ if(navigator.clearAppBadge) navigator.clearAppBadge().catch(()=>{}); }catch(e){} }
 const PUSH_CATS=[
   {key:'sched',  label:'📅 予定の更新'},
   {key:'plays',  label:'🏀 作戦盤の更新'},
@@ -3014,14 +3016,18 @@ if(faceLockNeeded() && !faceAuthFresh()){
 }
 else { bBoardGate(); }
 document.addEventListener('visibilitychange',()=>{
-  if(document.visibilityState==='visible' && faceLockNeeded() && !faceAuthFresh()
-     && document.getElementById('faceLock').style.display!=='flex'){
-    showFaceLock();
+  if(document.visibilityState==='visible'){
+    pushClearBadge();
+    if(faceLockNeeded() && !faceAuthFresh()
+       && document.getElementById('faceLock').style.display!=='flex'){
+      showFaceLock();
+    }
   }
 });
 document.getElementById('vlOverlay').addEventListener('click',e=>{if(e.target.id==='vlOverlay' && !boardGateActive)closeModal();}); document.addEventListener('keydown',e=>{if(e.key==='Escape' && !boardGateActive)closeModal();});
 if(!bConfigured()){ document.getElementById('bSetupNotice').style.display=''; document.getElementById('bListArea').innerHTML=''; }
 pushUpdateUI();
+pushClearBadge();
 /* 通知ON済みの端末は、開いたときにトークンを静かに確認（変わっていたら登録し直す） */
 setTimeout(async()=>{
   try{

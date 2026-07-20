@@ -9,18 +9,24 @@ self.addEventListener('push', function(e){
   var n = (d && d.notification) || {};
   var title = n.title || 'TEAM BOARD';
   var opts = { body: n.body || '', icon: 'icon-192.png', badge: 'icon-192.png' };
-  e.waitUntil(self.registration.showNotification(title, opts));
+  e.waitUntil(Promise.all([
+    self.registration.showNotification(title, opts),
+    (self.registration.setAppBadge ? self.registration.setAppBadge(1).catch(function(){}) : Promise.resolve())
+  ]));
 });
 
-/* 通知タップでアプリを開く（既に開いているタブがあればそれを前面に） */
+/* 通知タップでアプリを開く（既に開いているタブがあればそれを前面に）／アイコンのバッジは消す */
 self.addEventListener('notificationclick', function(event){
   event.notification.close();
   event.waitUntil(
-    clients.matchAll({type:'window', includeUncontrolled:true}).then(function(list){
-      for (var i=0; i<list.length; i++){
-        if ('focus' in list[i]) return list[i].focus();
-      }
-      if (clients.openWindow) return clients.openWindow('./');
-    })
+    Promise.all([
+      (self.registration.clearAppBadge ? self.registration.clearAppBadge().catch(function(){}) : Promise.resolve()),
+      clients.matchAll({type:'window', includeUncontrolled:true}).then(function(list){
+        for (var i=0; i<list.length; i++){
+          if ('focus' in list[i]) return list[i].focus();
+        }
+        if (clients.openWindow) return clients.openWindow('./');
+      })
+    ])
   );
 });
