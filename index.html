@@ -615,7 +615,10 @@ function formatSchedTime(val) {
 <div class="main-pane" id="pane-bbs">
   <div class="board-topbar">
     <h2>チーム連絡・予定</h2>
-    <div id="bCoachArea"><button class="b-ghost" onclick="openCoach()">コーチ</button></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+      <button class="b-ghost" id="pushBtn" onclick="pushEnable()">🔔 通知</button>
+      <div id="bCoachArea"><button class="b-ghost" onclick="openCoach()">コーチ</button></div>
+    </div>
   </div>
 
   <div id="bLockScreen" style="display:none; width:100%; text-align:center; padding:40px 0;">
@@ -699,6 +702,16 @@ function formatSchedTime(val) {
 </div>
 
 <div class="vl-overlay" id="vlOverlay"><div class="vl-modal" id="vlModal"></div></div>
+<div id="faceLock" style="display:none;position:fixed;inset:0;z-index:1200;background:var(--bg);align-items:center;justify-content:center;padding:20px">
+  <div class="vl-modal" style="max-width:340px;text-align:center;position:static">
+    <div style="font-size:44px;margin-bottom:10px">🏀</div>
+    <h3>おかえりなさい</h3>
+    <p class="b-hint" style="margin:10px 0 18px">顔認証（または指紋・パスコード）でボードを開きます。</p>
+    <button class="b-primary" style="width:100%;margin-bottom:10px" onclick="faceLogin()">顔認証で開く</button>
+    <button class="b-ghost" style="width:100%" onclick="faceUsePass()">合言葉で開く</button>
+    <div style="margin-top:14px"><a href="#" onclick="faceRemove();return false" style="font-size:12px;color:var(--muted)">この端末の顔認証を解除</a></div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -2172,6 +2185,67 @@ async function bBoardGateSubmit(){
   bBoardPass=v; bCoachPass=null; safeLSset('baske_board_pass',bBoardPass);
   boardGateActive=false; closeModal(); bUpdateCoachUI();
   loadMyPlays().then(renderMyPlays); loadPlayerPlays().then(renderPlayerPlays); loadVlib().then(renderVlib);
+  offerPasskey();
+}
+
+/* ===== 顔認証（WebAuthn。端末のFace ID/指紋/PINを使う。顔データは送信・保存しない） =====
+   1端末の顔認証キーは1チームにだけ紐づける（baske_face_team）。合言葉でログイン中のチームと
+   一致する場合のみ有効にし、他チームの端末を勝手に開けないようにする。 */
+function faceKeyId(){ return safeLSget('baske_face_id')||''; }
+function faceKeyTeam(){ return safeLSget('baske_face_team')||''; }
+const FACE_AUTH_TTL=2*60*60*1000;
+function faceStamp(){ safeLSset('baske_auth_at', String(Date.now())); }
+function faceAuthFresh(){ const t=Number(safeLSget('baske_auth_at'))||0; return (Date.now()-t)<FACE_AUTH_TTL; }
+function faceLockNeeded(){ return !!(bBoardPass && faceKeyId() && faceKeyTeam()===bBoardPass && window.PublicKeyCredential && window.isSecureContext); }
+function bufToB64(b){ const a=new Uint8Array(b); let s=''; for(let i=0;i<a.length;i++)s+=String.fromCharCode(a[i]); return btoa(s); }
+function b64ToBuf(s){ const bin=atob(s); const a=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i); return a.buffer; }
+function faceRnd(n){ const a=new Uint8Array(n); crypto.getRandomValues(a); return a; }
+async function offerPasskey(){
+  if(faceKeyId() || safeLSget('baske_face_no')==='1' || !window.PublicKeyCredential || !window.isSecureContext) return;
+  let ok=false; try{ ok=await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); }catch(e){}
+  if(!ok) return;
+  showModal('<h3>顔認証でもっと速く</h3><p class="b-hint" style="margin-bottom:14px">次回からこの端末の顔認証（または指紋・パスコード）でボードを開けます。顔のデータが送信・保存されることはありません。</p><div class="vl-mbtns"><button class="ng" onclick="passkeyNo()">あとで</button><button class="ok" onclick="passkeyEnroll()">登録する</button></div>');
+}
+function passkeyNo(){ safeLSset('baske_face_no','1'); closeModal(); }
+async function passkeyEnroll(){
+  try{
+    const cred=await navigator.credentials.create({publicKey:{
+      challenge:faceRnd(32),
+      rp:{name:'TEAM BOARD'},
+      user:{id:faceRnd(16),name:'team-board-member',displayName:'TEAM BOARD'},
+      pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+      authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required'},
+      timeout:60000
+    }});
+    safeLSset('baske_face_id', bufToB64(cred.rawId));
+    safeLSset('baske_face_team', bBoardPass);
+    closeModal(); toast('顔認証を登録しました。次回から使えます');
+  }catch(e){ closeModal(); toast('登録しませんでした'); }
+}
+function showFaceLock(){ document.getElementById('faceLock').style.display='flex'; }
+async function faceLogin(){
+  try{
+    await navigator.credentials.get({publicKey:{
+      challenge:faceRnd(32),
+      allowCredentials:[{type:'public-key',id:b64ToBuf(faceKeyId()),transports:['internal']}],
+      userVerification:'required',
+      timeout:60000
+    }});
+  }catch(e){ toast('顔認証できませんでした。合言葉でも開けます'); return; }
+  faceStamp();
+  document.getElementById('faceLock').style.display='none';
+  teamGet(bBoardPass).then(t=>{
+    if(!t){ bBoardPass=null; safeLSset('baske_board_pass',''); bBoardGate(); return; }
+    loadMyPlays().then(renderMyPlays); loadPlayerPlays().then(renderPlayerPlays); loadVlib().then(renderVlib);
+  });
+}
+function faceUsePass(){ document.getElementById('faceLock').style.display='none'; bBoardGate(); }
+function faceRemove(){
+  showModal('<h3>顔認証の解除</h3><p class="b-hint" style="margin-bottom:14px">この端末の顔認証ログインを解除しますか？（合言葉はこの端末に残ります）</p><div class="vl-mbtns"><button class="ng" onclick="closeModal()">やめる</button><button class="ok" onclick="faceRemoveDo()">解除する</button></div>');
+}
+function faceRemoveDo(){
+  safeLSset('baske_face_id',''); safeLSset('baske_face_team',''); safeLSset('baske_face_no','1');
+  closeModal(); document.getElementById('faceLock').style.display='none';
 }
 
 function bConfigured(){ return !!(typeof sb!=='undefined' && sb); }
@@ -2540,6 +2614,102 @@ async function bSaveNotify(){
   let ok=false; try{ const {data,error}=await sb.rpc('notify_email_set',{p_team:bBoardPass,p_coach:bCoachPass,p_email:v}); ok=!error&&data===true; }catch(e){}
   if(ok){ closeModal(); toast(v?'通知メールを設定しました':'通知を停止しました'); } else toast('保存に失敗しました');
 }
+
+/* ===== 🔔 プッシュ通知（Firebase Cloud Messaging）。メール収集はしない ===== */
+const PUSH_VAPID='BFsITK_M4Z3_6iueTX9-CB3_TX7bf22j22woIeSFxTt8rHdszdDuLXSH1RBlqPNSuJrrZC6Vefmr0U9stNtxNWs';
+const PUSH_FB_CONFIG={
+  apiKey:"AIzaSyC51hie7DO70yUuhwlVxSTboqkDkuh6NfI",
+  authDomain:"fluted-result-472023-k0.firebaseapp.com",
+  projectId:"fluted-result-472023-k0",
+  storageBucket:"fluted-result-472023-k0.firebasestorage.app",
+  messagingSenderId:"833223935802",
+  appId:"1:833223935802:web:2623863b5c10260b65b203"
+};
+function pushLoadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
+async function pushSdk(){
+  if(!(window.firebase&&window.firebase.messaging)){
+    await pushLoadScript('https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js');
+    await pushLoadScript('https://www.gstatic.com/firebasejs/10.12.5/firebase-messaging-compat.js');
+  }
+  if(!firebase.apps.length) firebase.initializeApp(PUSH_FB_CONFIG);
+  const reg=await navigator.serviceWorker.register('firebase-messaging-sw.js');
+  await navigator.serviceWorker.ready;
+  return reg;
+}
+function pushSupported(){ return ('serviceWorker' in navigator)&&('Notification' in window)&&('PushManager' in window); }
+function pushUpdateUI(){
+  const b=document.getElementById('pushBtn'); if(!b)return;
+  const on=!!safeLSget('baske_push_token') && ('Notification' in window) && Notification.permission==='granted';
+  b.textContent=on?'🔔 通知ON':'🔔 通知';
+}
+const PUSH_CATS=[
+  {key:'sched',  label:'📅 予定の更新'},
+  {key:'plays',  label:'🏀 作戦盤の更新'},
+  {key:'video',  label:'🎬 動画の更新'},
+  {key:'qa',     label:'💬 質問への回答'},
+  {key:'notice', label:'📣 コーチからのお知らせ'}
+];
+function pushGetCats(){
+  const v=safeLSget('baske_push_cats');
+  if(!v) return PUSH_CATS.map(c=>c.key);
+  if(v==='none') return [];
+  return v.split(',');
+}
+function pushOpenSettings(){
+  const cur=pushGetCats();
+  let html='<h3>🔔 通知の設定</h3><div style="font-size:12px;color:var(--muted);margin-bottom:8px">この端末に届く通知を選べます。</div>';
+  PUSH_CATS.forEach(c=>{
+    html+='<label style="display:flex;align-items:center;gap:9px;padding:7px 2px;font-size:14px;cursor:pointer"><input type="checkbox" id="pc_'+c.key+'" '+(cur.indexOf(c.key)>=0?'checked':'')+'>'+c.label+'</label>';
+  });
+  html+='<div class="vl-mbtns"><button class="ng" onclick="closeModal()">閉じる</button><button class="ok" onclick="pushSaveCats()">保存</button></div>';
+  if(bCoachPass){
+    html+='<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">'
+      +'<div style="font-size:13px;font-weight:600;margin-bottom:6px">📣 みんなにお知らせを送る（コーチ）</div>'
+      +'<textarea id="pushNoticeText" placeholder="例：掲示板を更新しました！見てね" style="width:100%;min-height:70px"></textarea>'
+      +'<div class="vl-mbtns"><button class="ok" onclick="pushSendNotice()">送信</button></div></div>';
+  }
+  showModal(html);
+}
+async function pushSaveCats(){
+  const sel=PUSH_CATS.filter(c=>{const el=document.getElementById('pc_'+c.key);return el&&el.checked;}).map(c=>c.key);
+  const cats=sel.length?sel.join(','):'none';
+  const token=safeLSget('baske_push_token');
+  if(!token){ closeModal(); return; }
+  let ok=false; try{ const {data,error}=await sb.rpc('push_token_save',{p_team:bBoardPass,p_token:token,p_cats:cats}); ok=!error&&data===true; }catch(e){}
+  if(ok){ safeLSset('baske_push_cats',cats); closeModal(); toast(sel.length?'🔔 通知の設定を保存しました':'この端末への通知を停止しました'); }
+  else toast('保存に失敗しました。電波の良い場所でもう一度お試しください');
+}
+async function pushSendNotice(){
+  const el=document.getElementById('pushNoticeText'); const text=(el&&el.value||'').trim();
+  if(!text){ toast('お知らせの内容を入力してください'); return; }
+  let ok=false; try{ const {data,error}=await sb.rpc('push_notify_send',{p_team:bBoardPass,p_coach:bCoachPass,p_text:text}); ok=!error&&data===true; }catch(e){}
+  if(ok){ closeModal(); toast('📣 お知らせを送りました'); } else toast('送信に失敗しました');
+}
+async function pushEnable(){
+  try{
+    if(!pushSupported()){ toast('この端末のブラウザは通知に対応していません'); return; }
+    const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+    const standalone=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||window.navigator.standalone;
+    if(isIOS&&!standalone){
+      showModal('<h3>🔔 通知を受け取るには</h3><div style="font-size:13px;line-height:1.9;color:var(--muted)">iPhone・iPadでは、先にこのページを<b>ホーム画面に追加</b>して、ホーム画面のアイコンから開くと通知をONにできます。<br><br>手順：Safari下の共有ボタン（□↑）→「ホーム画面に追加」</div><div class="vl-mbtns"><button class="ok" onclick="closeModal()">わかった</button></div>');
+      return;
+    }
+    if(safeLSget('baske_push_token') && Notification.permission==='granted'){
+      pushOpenSettings();
+      return;
+    }
+    toast('通知を設定しています…');
+    const perm=await Notification.requestPermission();
+    if(perm!=='granted'){ toast('通知が許可されませんでした'); return; }
+    const reg=await pushSdk();
+    const token=await firebase.messaging().getToken({vapidKey:PUSH_VAPID, serviceWorkerRegistration:reg});
+    if(!token){ toast('通知の設定に失敗しました'); return; }
+    const cats=pushGetCats().join(',')||'none';
+    let ok=false; try{ const {data,error}=await sb.rpc('push_token_save',{p_team:bBoardPass,p_token:token,p_cats:cats}); ok=!error&&data===true; }catch(e){}
+    if(ok){ safeLSset('baske_push_token',token); safeLSset('baske_push_cats',cats); pushUpdateUI(); toast('🔔 通知をONにしました'); pushOpenSettings(); }
+    else toast('通知の登録に失敗しました');
+  }catch(e){ toast('通知の設定に失敗しました'); }
+}
 function openChangePass(){
   showModal('<h3>パスワード変更</h3><div class="vl-field"><label>新しいパスワード</label><input type="text" id="bCnew"></div>'+
     '<div class="vl-field"><label>確認（もう一度）</label><input type="text" id="bCnew2"></div>'+
@@ -2828,15 +2998,45 @@ let currentSchedules=[];
 
 buildPlayButtons(); layout();resetPositions();draw();
 renderMyPlays(); renderPlayerPlays();
-if(bBoardPass){
+// URLに ?reset=1 を付けて開くと、この端末の記憶（合言葉・顔認証）を消して最初からやり直せる（動作確認用）
+if(location.search.indexOf('reset=1')>=0){
+  safeLSset('baske_board_pass',''); safeLSset('baske_face_id',''); safeLSset('baske_face_team',''); safeLSset('baske_face_no','');
+  bBoardPass=null;
+  try{ history.replaceState(null,'',location.pathname); }catch(e){}
+}
+if(faceLockNeeded() && !faceAuthFresh()){
+  showFaceLock();
+}else if(bBoardPass){
   teamGet(bBoardPass).then(t=>{
     if(!t){ bBoardPass=null; safeLSset('baske_board_pass',''); bBoardGate(); return; }
     loadMyPlays().then(renderMyPlays); loadPlayerPlays().then(renderPlayerPlays); loadVlib().then(renderVlib);
   });
 }
 else { bBoardGate(); }
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible' && faceLockNeeded() && !faceAuthFresh()
+     && document.getElementById('faceLock').style.display!=='flex'){
+    showFaceLock();
+  }
+});
 document.getElementById('vlOverlay').addEventListener('click',e=>{if(e.target.id==='vlOverlay' && !boardGateActive)closeModal();}); document.addEventListener('keydown',e=>{if(e.key==='Escape' && !boardGateActive)closeModal();});
 if(!bConfigured()){ document.getElementById('bSetupNotice').style.display=''; document.getElementById('bListArea').innerHTML=''; }
+pushUpdateUI();
+/* 通知ON済みの端末は、開いたときにトークンを静かに確認（変わっていたら登録し直す） */
+setTimeout(async()=>{
+  try{
+    if(!pushSupported())return;
+    if(!safeLSget('baske_push_token'))return;
+    if(Notification.permission!=='granted')return;
+    if(!bBoardPass)return;
+    const reg=await pushSdk();
+    const token=await firebase.messaging().getToken({vapidKey:PUSH_VAPID, serviceWorkerRegistration:reg});
+    if(token && token!==safeLSget('baske_push_token')){
+      const {data,error}=await sb.rpc('push_token_save',{p_team:bBoardPass,p_token:token,p_cats:(safeLSget('baske_push_cats')||'')});
+      if(!error && data===true) safeLSset('baske_push_token',token);
+    }
+  }catch(e){}
+},3000);
 </script>
 </body>
 </html>
